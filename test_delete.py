@@ -9,7 +9,7 @@ import json
 class ImageViewerApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("图片浏览器 - 增强版")
+        self.root.title("字典json生成")
 
         # 初始化数据结构
         self.current_data = {
