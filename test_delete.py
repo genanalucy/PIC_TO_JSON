@@ -14,6 +14,11 @@ class ImageViewerApp:
         # 初始化数据结构
         self.current_data = {
             "image": "",
+            "annotator": "",  # 新增标注作者
+            "page_info": {  # 新增页码信息
+                "page_num": "",
+                "word_num": ""
+            },
             "pronunciations": []
         }
 
@@ -91,9 +96,30 @@ class ImageViewerApp:
         right_frame = tk.Frame(self.main_frame)
         right_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=20)
 
+        self.create_annotation_info_section(right_frame)
         self.create_pronunciation_section(right_frame)
         self.create_pos_section(right_frame)
 
+    def create_annotation_info_section(self, parent):
+        """新增的标注信息区域"""
+        frame = tk.LabelFrame(parent, text="标注信息", font=("微软雅黑", 10), padx=10, pady=10)
+        frame.pack(fill=tk.X, pady=5)
+
+        # 标注作者
+        tk.Label(frame, text="标注作者:").grid(row=0, column=0, sticky='e', padx=5)
+        self.annotator_entry = tk.Entry(frame, width=25)
+        self.annotator_entry.grid(row=0, column=1, pady=2, sticky='w')
+
+        # 页码信息
+        tk.Label(frame, text="页码-第").grid(row=1, column=0, sticky='e', padx=5)
+        self.page_num_entry = tk.Entry(frame, width=6)
+        self.page_num_entry.grid(row=1, column=1, pady=2, sticky='w')
+        tk.Label(frame, text="页").grid(row=1, column=2, sticky='w')
+
+        tk.Label(frame, text="字位置-第").grid(row=1, column=3, sticky='e', padx=5)
+        self.word_num_entry = tk.Entry(frame, width=6)
+        self.word_num_entry.grid(row=1, column=4, pady=2, sticky='w')
+        tk.Label(frame, text="个字").grid(row=1, column=5, sticky='w')
     def create_pronunciation_section(self, parent):
         frame = tk.LabelFrame(parent, text="读音信息", font=("微软雅黑", 10), padx=10, pady=10)
         frame.pack(fill=tk.X, pady=5)
@@ -176,9 +202,32 @@ class ImageViewerApp:
                 with open(json_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     if isinstance(data, list) and len(data) > 0:
+                        # 保留原有标注信息
+                        original_annotator = self.current_data.get("annotator", "")
+                        original_page_info = self.current_data.get("page_info", {})
+
                         self.current_data = data[0]
+
+                        # 保持当前标注信息（如果新加载的数据没有这些字段）
+                        self.current_data.setdefault("annotator", original_annotator)
+                        self.current_data.setdefault("page_info", original_page_info)
             else:
+                # 初始化时保留现有标注信息
+                original_annotator = self.current_data.get("annotator", "")
+                original_page_info = self.current_data.get("page_info", {})
                 self.initialize_data()
+                self.current_data["annotator"] = original_annotator
+                self.current_data["page_info"] = original_page_info
+
+            # 更新标注信息字段
+            self.annotator_entry.delete(0, tk.END)
+            self.annotator_entry.insert(0, self.current_data.get("annotator", ""))
+
+            self.page_num_entry.delete(0, tk.END)
+            self.page_num_entry.insert(0, self.current_data["page_info"].get("page_num", ""))
+
+            self.word_num_entry.delete(0, tk.END)
+            self.word_num_entry.insert(0, self.current_data["page_info"].get("word_num", ""))
 
             # 加载图片
             img = Image.open(image_path)
@@ -233,6 +282,11 @@ class ImageViewerApp:
             text=f"例句 {self.current_example_index + 1}/{len(entry['examples'])}")
 
     def save_current_form(self):
+        # 保存标注信息
+        self.current_data["annotator"] = self.annotator_entry.get()
+        self.current_data["page_info"]["page_num"] = self.page_num_entry.get()
+        self.current_data["page_info"]["word_num"] = self.word_num_entry.get()
+
         pron = self.current_data["pronunciations"][self.current_pronunciation_index]
         pron["zhuang_spelling"] = self.zh_wen_entry.get()
         pron["ipa"] = self.ipa_entry.get()
@@ -336,8 +390,15 @@ class ImageViewerApp:
                 self.update_form()
 
     def add_new_pronunciation(self):
+        """添加新读音时保留标注信息"""
         self.save_current_form()
-        self.current_data["pronunciations"].append({
+
+        # 保存当前标注信息
+        current_annotator = self.current_data["annotator"]
+        current_page_info = self.current_data["page_info"].copy()
+
+        # 创建新读音条目
+        new_pron = {
             "zhuang_spelling": "",
             "ipa": "",
             "entries": [{
@@ -345,7 +406,14 @@ class ImageViewerApp:
                 "meaning": "",
                 "examples": [{"壮文": "", "中文": ""}]
             }]
-        })
+        }
+
+        self.current_data["pronunciations"].append(new_pron)
+
+        # 恢复标注信息
+        self.current_data["annotator"] = current_annotator
+        self.current_data["page_info"] = current_page_info
+
         self.current_pronunciation_index = len(self.current_data["pronunciations"]) - 1
         self.current_entry_index = 0
         self.current_example_index = 0
