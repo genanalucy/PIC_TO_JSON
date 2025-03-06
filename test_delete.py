@@ -1,9 +1,11 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 from PIL import Image, ImageTk
 import os
 import glob
 import json
+import shutil
+import datetime
 
 
 class ImageViewerApp:
@@ -11,29 +13,30 @@ class ImageViewerApp:
         self.root = root
         self.root.title("字典json生成")
 
-        # 初始化数据结构
+        # 初始化数据结构（新增imported_image字段）
         self.current_data = {
             "image": "",
-            "annotator": "",  # 新增标注作者
-            "page_info": {  # 新增页码信息
+            "imported_image": "",  # 新增导入图片路径字段
+            "annotator": "",
+            "page_info": {
                 "page_num": "",
                 "word_num": ""
             },
             "pronunciations": []
         }
 
-        # 加载所有图片文件（包含已处理）
+        # 加载所有图片文件
         image_dir = "image"
         output_dir = "output"
         image_extensions = ["*.png", "*.jpg", "*.jpeg"]
         all_images = []
         for ext in image_extensions:
-            all_images.extend(glob.glob(os.path.join(image_dir, ext)))# 获取所有图片文件
-        self.image_files = sorted(all_images)# 什么顺序
+            all_images.extend(glob.glob(os.path.join(image_dir, ext)))
+        self.image_files = sorted(all_images)
 
         # 加载配置文件
         config_path = "config.json"
-        self.current_image_index = 0  # 默认索引
+        self.current_image_index = 0
         if os.path.exists(config_path):
             try:
                 with open(config_path, "r") as f:
@@ -52,6 +55,7 @@ class ImageViewerApp:
             self.load_current_image()
         else:
             self.show_empty_message()
+
 
     def show_empty_message(self):
         self.img_canvas.delete("all")
@@ -83,13 +87,13 @@ class ImageViewerApp:
         nav_frame = tk.Frame(left_frame)
         nav_frame.pack(pady=10)
 
+        # 新增导入按钮
+        tk.Button(nav_frame, text="导入图片", width=8, command=self.import_image).pack(side=tk.LEFT, padx=2)
         tk.Button(nav_frame, text="上一页", width=8, command=self.show_previous_image).pack(side=tk.LEFT, padx=2)
         tk.Button(nav_frame, text="下一页", width=8, command=self.show_next_image).pack(side=tk.LEFT, padx=2)
-
         self.page_entry = tk.Entry(nav_frame, width=6)
         self.page_entry.pack(side=tk.LEFT, padx=5)
         tk.Button(nav_frame, text="跳转", width=6, command=self.jump_to_page).pack(side=tk.LEFT, padx=2)
-
         tk.Button(nav_frame, text="提交", width=8, bg='#4CAF50', command=self.submit_data).pack(side=tk.LEFT, padx=5)
 
     def create_form_panel(self):
@@ -484,6 +488,72 @@ class ImageViewerApp:
             self.current_example_index += 1
             self.update_form()
 
+    def import_image(self):
+        """处理图片导入"""
+        file_path = filedialog.askopenfilename(
+            title="选择要导入的图片",
+            filetypes=[
+                ("PNG 图片", "*.png"),
+                ("JPEG 图片", "*.jpg *.jpeg"),
+                ("All Files", "*.*")
+            ]  # 修改文件类型格式
+        )
+
+        if file_path:
+            self.current_data["imported_image"] = file_path
+            messagebox.showinfo("导入成功", f"已选择图片: {os.path.basename(file_path)}")
+
+    def submit_data(self):
+        """提交时处理图片复制"""
+        self.save_current_form()
+        os.makedirs("output", exist_ok=True)
+        filename = f"{os.path.splitext(self.current_data['image'])[0]}.json"
+        full_path = os.path.join("output", filename)
+
+        # 处理导入的图片
+        imported_image = self.current_data.get("imported_image")
+        if imported_image and os.path.exists(imported_image):
+            self.copy_imported_image(imported_image)
+
+        # 保存数据
+        with open(full_path, 'w', encoding='utf-8') as f:
+            json.dump([self.current_data], f, ensure_ascii=False, indent=2)
+
+        messagebox.showinfo("成功", f"数据已保存到\n{full_path}")
+        self.show_next_image()
+
+    def copy_imported_image(self, src_path):
+        """复制导入的图片到input_image目录"""
+        input_dir = "input_image"
+        os.makedirs(input_dir, exist_ok=True)
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+
+        # 为每个读音生成图片副本
+        for idx, pron in enumerate(self.current_data["pronunciations"]):
+            # 生成文件名
+            pron_name = pron.get("zhuang_spelling", "").strip()
+            if not pron_name:
+                pron_name = f"pron_{idx + 1}"
+
+            # 清理非法字符
+            pron_name = "".join(c for c in pron_name if c.isalnum() or c in ('_', '-')).rstrip()
+            ext = os.path.splitext(src_path)[1]
+            base_name = f"{pron_name}_{timestamp}{ext}"
+
+            # 处理重复文件名
+            target_path = os.path.join(input_dir, base_name)
+            counter = 1
+            while os.path.exists(target_path):
+                target_path = os.path.join(input_dir, f"{pron_name}_{timestamp}_{counter}{ext}")
+                counter += 1
+
+            # 执行复制
+            try:
+                shutil.copy(src_path, target_path)
+                print(f"已保存导入图片: {target_path}")
+            except Exception as e:
+                print(f"图片保存失败: {str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
