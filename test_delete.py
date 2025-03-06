@@ -290,17 +290,32 @@ class ImageViewerApp:
 
     def delete_pronunciation(self):
         if messagebox.askyesno("确认", "确定要删除当前读音及其所有词性信息吗？"):
+            original_index = self.current_pronunciation_index
+
+            # 先保存数据再删除
             self.save_current_form()
-            del self.current_data["pronunciations"][self.current_pronunciation_index]
+            del self.current_data["pronunciations"][original_index]
+
+            # 处理空列表情况
             if not self.current_data["pronunciations"]:
                 self.current_data["pronunciations"].append({
                     "zhuang_spelling": "",
                     "ipa": "",
                     "entries": [{"part_of_speech": "", "meaning": "", "examples": [{"壮文": "", "中文": ""}]}]
                 })
-            self.current_pronunciation_index = min(self.current_pronunciation_index,
-                                                 len(self.current_data["pronunciations"]) - 1)
-            self.load_current_image()
+
+            # 更新索引（优先保持当前位置）
+            new_total = len(self.current_data["pronunciations"])
+            self.current_pronunciation_index = min(original_index, new_total - 1)
+
+            # 重置下级索引并更新界面
+            self.current_entry_index = 0
+            self.current_example_index = 0
+            self.update_form()  # 改为直接更新表单
+
+            # 更新标题显示
+            self.title_label.config(
+                text=f"{self.current_data['image']} (第{self.current_image_index + 1}页/共{len(self.image_files)}页)")
 
     def delete_entry(self):
         pron = self.current_data["pronunciations"][self.current_pronunciation_index]
