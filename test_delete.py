@@ -5,7 +5,8 @@ import os
 import glob
 import json
 import shutil
-import datetime
+from datetime import datetime
+import re
 
 
 class ImageViewerApp:
@@ -16,12 +17,13 @@ class ImageViewerApp:
         # 初始化数据结构（新增imported_image字段）
         self.current_data = {
             "image": "",
-            "imported_image": "",  # 新增导入图片路径字段
             "annotator": "",
             "page_info": {
                 "page_num": "",
                 "word_num": ""
             },
+            "imported_source_path": "",  # 新增导入图片路径
+            "imported_image": [],       # 新增导入图片数组
             "pronunciations": []
         }
 
@@ -55,6 +57,7 @@ class ImageViewerApp:
             self.load_current_image()
         else:
             self.show_empty_message()
+
 
 
     def show_empty_message(self):
@@ -91,10 +94,12 @@ class ImageViewerApp:
         tk.Button(nav_frame, text="导入图片", width=8, command=self.import_image).pack(side=tk.LEFT, padx=2)
         tk.Button(nav_frame, text="上一页", width=8, command=self.show_previous_image).pack(side=tk.LEFT, padx=2)
         tk.Button(nav_frame, text="下一页", width=8, command=self.show_next_image).pack(side=tk.LEFT, padx=2)
+
         self.page_entry = tk.Entry(nav_frame, width=6)
         self.page_entry.pack(side=tk.LEFT, padx=5)
         tk.Button(nav_frame, text="跳转", width=6, command=self.jump_to_page).pack(side=tk.LEFT, padx=2)
         tk.Button(nav_frame, text="提交", width=8, bg='#4CAF50', command=self.submit_data).pack(side=tk.LEFT, padx=5)
+
 
     def create_form_panel(self):
         right_frame = tk.Frame(self.main_frame)
@@ -200,12 +205,19 @@ class ImageViewerApp:
             image_path = self.image_files[self.current_image_index]
             self.current_data["image"] = os.path.basename(image_path)
 
+            # 加载现有数据时保留导入信息
+            original_import = {
+                "source": self.current_data.get("imported_source_path", ""),
+                "images": self.current_data.get("imported_image", [])
+            }
+
             # 尝试加载现有标注数据
             json_path = os.path.join("output", os.path.splitext(self.current_data["image"])[0] + ".json")
             if os.path.exists(json_path):
                 with open(json_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     if isinstance(data, list) and len(data) > 0:
+                        self.current_data = data[0]
                         # 保留原有标注信息
                         original_annotator = self.current_data.get("annotator", "")
                         original_page_info = self.current_data.get("page_info", {})
@@ -215,6 +227,9 @@ class ImageViewerApp:
                         # 保持当前标注信息（如果新加载的数据没有这些字段）
                         self.current_data.setdefault("annotator", original_annotator)
                         self.current_data.setdefault("page_info", original_page_info)
+
+                        self.current_data["imported_source_path"] = original_import["source"]
+                        self.current_data["imported_image"] = original_import["images"]
             else:
                 # 初始化时保留现有标注信息
                 original_annotator = self.current_data.get("annotator", "")
@@ -492,30 +507,59 @@ class ImageViewerApp:
         """处理图片导入"""
         file_path = filedialog.askopenfilename(
             title="选择要导入的图片",
+            # 修改文件类型参数格式
             filetypes=[
-                ("PNG 图片", "*.png"),
-                ("JPEG 图片", "*.jpg *.jpeg"),
-                ("All Files", "*.*")
-            ]  # 修改文件类型格式
+                ("PNG文件", "*.png"),
+                ("JPEG文件", "*.jpg *.jpeg"),
+                ("所有文件", "*.*")
+            ]
         )
 
         if file_path:
-            self.current_data["imported_image"] = file_path
+            self.current_data["imported_source_path"] = file_path
             messagebox.showinfo("导入成功", f"已选择图片: {os.path.basename(file_path)}")
 
     def submit_data(self):
-        """提交时处理图片复制"""
+        """处理提交时图片复制"""
         self.save_current_form()
+
+        # 处理导入图片的复制
+        if self.current_data["imported_source_path"]:
+            source_path = self.current_data["imported_source_path"]
+            input_dir = "input_image"
+            os.makedirs(input_dir, exist_ok=True)
+
+            # 生成统一时间戳
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            imported_images = []
+
+            try:
+                # 遍历所有读音生成副本
+                for pron in self.current_data["pronunciations"]:
+                    # 清理文件名非法字符
+                    pron_name = re.sub(r'[\\/*?:"<>|]', "", pron.get("zhuang_spelling", "unnamed"))
+                    ext = os.path.splitext(source_path)[1]
+                    filename = f"{pron_name}_{timestamp}{ext}"
+                    dest_path = os.path.join(input_dir, filename)
+
+                    # 复制文件
+                    shutil.copyfile(source_path, dest_path)
+                    imported_images.append(filename)
+
+                # 更新导入图片记录
+                self.current_data["imported_image"] = imported_images
+                # 清空导入路径防止重复处理
+                self.current_data["imported_source_path"] = ""
+
+            except Exception as e:
+                messagebox.showerror("错误", f"文件复制失败: {str(e)}")
+                return
+
+        # 保存数据
         os.makedirs("output", exist_ok=True)
         filename = f"{os.path.splitext(self.current_data['image'])[0]}.json"
         full_path = os.path.join("output", filename)
 
-        # 处理导入的图片
-        imported_image = self.current_data.get("imported_image")
-        if imported_image and os.path.exists(imported_image):
-            self.copy_imported_image(imported_image)
-
-        # 保存数据
         with open(full_path, 'w', encoding='utf-8') as f:
             json.dump([self.current_data], f, ensure_ascii=False, indent=2)
 
