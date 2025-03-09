@@ -1,12 +1,13 @@
 import tkinter as tk
 from tkinter import messagebox, filedialog
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk,ImageGrab
 import os
 import glob
 import json
 import shutil
 from datetime import datetime
 import re
+import tempfile
 
 
 class ImageViewerApp:
@@ -87,19 +88,112 @@ class ImageViewerApp:
         self.img_canvas = tk.Canvas(left_frame, width=200, height=200, bg='#e0e0e0')
         self.img_canvas.pack()
 
-        nav_frame = tk.Frame(left_frame)
-        nav_frame.pack(pady=10)
+        # 第一行导航按钮
+        nav_frame1 = tk.Frame(left_frame)
+        nav_frame1.pack(pady=5)
 
-        # 新增导入按钮
-        tk.Button(nav_frame, text="导入图片", width=8, command=self.import_image).pack(side=tk.LEFT, padx=2)
-        tk.Button(nav_frame, text="上一页", width=8, command=self.show_previous_image).pack(side=tk.LEFT, padx=2)
-        tk.Button(nav_frame, text="下一页", width=8, command=self.show_next_image).pack(side=tk.LEFT, padx=2)
+        # 第一行组件：上一页/下一页/提交/页码
+        first_row_btns = [
+            ("上一页", self.show_previous_image),
+            ("下一页", self.show_next_image),
+            ("提交", self.submit_data)
+        ]
 
-        self.page_entry = tk.Entry(nav_frame, width=6)
+        # 创建第一行左侧按钮
+        for text, cmd in first_row_btns:
+            btn = tk.Button(nav_frame1, text=text, width=6, command=cmd)
+            if text == "提交":
+                btn.config(width=8, bg='#4CAF50')
+            btn.pack(side=tk.LEFT, padx=2)
+
+        # 页码输入组件
+        self.page_entry = tk.Entry(nav_frame1, width=6)
         self.page_entry.pack(side=tk.LEFT, padx=5)
-        tk.Button(nav_frame, text="跳转", width=6, command=self.jump_to_page).pack(side=tk.LEFT, padx=2)
-        tk.Button(nav_frame, text="提交", width=8, bg='#4CAF50', command=self.submit_data).pack(side=tk.LEFT, padx=5)
+        tk.Button(nav_frame1, text="跳转", width=6, command=self.jump_to_page).pack(side=tk.LEFT, padx=2)
 
+        # 第二行导入按钮
+        nav_frame2 = tk.Frame(left_frame)
+        nav_frame2.pack(pady=5)
+
+        # 第二行按钮
+        second_row_btns = [
+            ("导入图片", self.import_image),
+            ("实时截图", self.capture_screen)
+        ]
+
+        for text, cmd in second_row_btns:
+            tk.Button(nav_frame2, text=text, width=8, command=cmd).pack(side=tk.LEFT, padx=2)
+
+    def capture_screen(self):
+        """实现屏幕截图功能"""
+        # 隐藏窗口避免遮挡
+        self.root.withdraw()
+
+        # 创建全屏透明窗口
+        screen_win = tk.Toplevel()
+        screen_win.attributes('-fullscreen', True)
+        screen_win.attributes('-alpha', 0.3)
+        screen_win.configure(cursor="crosshair")
+
+        # 初始化坐标存储
+        start_x = start_y = end_x = end_y = 0
+        rect_id = None
+
+        def on_mouse_down(event):
+            nonlocal start_x, start_y
+            start_x, start_y = event.x, event.y
+
+        def on_mouse_move(event):
+            nonlocal rect_id
+            if rect_id:
+                canvas.delete(rect_id)
+            rect_id = canvas.create_rectangle(
+                start_x, start_y, event.x, event.y,
+                outline='red', width=3
+            )
+
+        def on_mouse_up(event):
+            nonlocal end_x, end_y
+            end_x, end_y = event.x, event.y
+            screen_win.destroy()
+
+            # 恢复主窗口
+            self.root.deiconify()
+
+            # 执行截图保存
+            self.save_captured_area(
+                (min(start_x, end_x), min(start_y, end_y)),
+                (max(start_x, end_x), max(start_y, end_y))
+            )
+
+        # 创建截图画布
+        canvas = tk.Canvas(screen_win, cursor="crosshair")
+        canvas.pack(fill=tk.BOTH, expand=True)
+
+        # 绑定事件
+        canvas.bind("<ButtonPress-1>", on_mouse_down)
+        canvas.bind("<B1-Motion>", on_mouse_move)
+        canvas.bind("<ButtonRelease-1>", on_mouse_up)
+
+    def save_captured_area(self, start_point, end_point):
+        """保存截图区域"""
+        # 获取屏幕截图
+        screenshot = ImageGrab.grab(bbox=(*start_point, *end_point))
+
+        # 生成临时文件
+        temp_file = tempfile.NamedTemporaryFile(
+            suffix=".png", delete=False
+        )
+        screenshot.save(temp_file, format="PNG")
+        temp_file.close()
+
+        # 更新数据
+        self.current_data["imported_source_path"] = temp_file.name
+        messagebox.showinfo(
+            "截图成功",
+            f"已捕获区域：{start_point} - {end_point}\n"
+            f"临时文件：{temp_file.name}"
+        )
 
     def create_form_panel(self):
         right_frame = tk.Frame(self.main_frame)
@@ -342,6 +436,44 @@ class ImageViewerApp:
 
     def submit_data(self):
         self.save_current_form()
+        if self.current_data["imported_source_path"]:
+            source_path = self.current_data["imported_source_path"]
+            input_dir = "input_image"
+            os.makedirs(input_dir, exist_ok=True)
+
+            # 生成统一时间戳
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            imported_images = []
+
+            try:
+                # 遍历所有读音生成副本
+                for pron in self.current_data["pronunciations"]:
+                    # 清理文件名非法字符
+                    pron_name = re.sub(r'[\\/*?:"<>|]', "", pron.get("zhuang_spelling", "unnamed"))
+
+                    # 获取文件扩展名（兼容截图临时文件）
+                    _, ext = os.path.splitext(source_path)
+                    ext = ext if ext else ".png"  # 截图默认PNG格式
+
+                    filename = f"{pron_name}_{timestamp}{ext}"
+                    dest_path = os.path.join(input_dir, filename)
+
+                    # 复制文件（支持不同来源）
+                    if source_path.startswith(tempfile.gettempdir()):
+                        shutil.copy(source_path, dest_path)
+                    else:
+                        shutil.copyfile(source_path, dest_path)
+
+                    imported_images.append(filename)
+
+                # 更新导入图片记录
+                self.current_data["imported_image"] = imported_images
+                # 清空导入路径防止重复处理
+                self.current_data["imported_source_path"] = ""
+
+            except Exception as e:
+                messagebox.showerror("错误", f"文件复制失败: {str(e)}")
+                return
         os.makedirs("output", exist_ok=True)
         filename = f"{os.path.splitext(self.current_data['image'])[0]}.json"
         full_path = os.path.join("output", filename)
