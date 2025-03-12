@@ -78,12 +78,12 @@ class ImageViewerApp:
 
     def create_image_panel(self):
         left_frame = tk.Frame(self.main_frame)
-        left_frame.pack(side=tk.LEFT, fill=tk.Y)
+        left_frame.pack(side=tk.TOP, fill=tk.Y)
 
         self.title_label = tk.Label(left_frame, text="", font=("微软雅黑", 12))
         self.title_label.pack(pady=5)
 
-        self.img_canvas = tk.Canvas(left_frame, width=200, height=200, bg='#e0e0e0')
+        self.img_canvas = tk.Canvas(left_frame, width=100, height=100, bg='#e0e0e0')
         self.img_canvas.pack()
 
         # 缩略图容器
@@ -267,7 +267,7 @@ class ImageViewerApp:
 
     def create_form_panel(self):
         right_frame = tk.Frame(self.main_frame)
-        right_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=20)
+        right_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True, padx=20)
 
         self.create_annotation_info_section(right_frame)
         self.create_pronunciation_section(right_frame)
@@ -415,7 +415,7 @@ class ImageViewerApp:
 
             self.img_canvas.image = photo
             self.img_canvas.delete("all")
-            self.img_canvas.create_image(100, 100, image=photo)
+            self.img_canvas.create_image(50, 50, image=photo)
             self.title_label.config(
                 text=f"{self.current_data['image']} (第{self.current_image_index + 1}页/共{len(self.image_files)}页)")
 
