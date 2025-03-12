@@ -139,6 +139,9 @@ class ImageViewerApp:
                 label = tk.Label(self.thumbnail_frame, image=photo,
                                  borderwidth=2, relief="solid",
                                  highlightbackground="red")
+                label.bind("<Button-1>",
+                           lambda e, path=temp_path: self.show_enlarged_image(path))
+
                 label.image = photo
                 label.pack(side=tk.LEFT, padx=2)
                 self.thumbnail_labels.append(label)
@@ -162,6 +165,9 @@ class ImageViewerApp:
                                      borderwidth=1, relief="solid")
                     label.image = photo
                     label.pack(side=tk.LEFT, padx=2)
+                    label.bind("<Button-1>",
+                               lambda e, path=temp_path: self.show_enlarged_image(path))
+
                     self.thumbnail_labels.append(label)
                     self.thumbnail_images.append(photo)
                 except Exception as e:
@@ -176,6 +182,7 @@ class ImageViewerApp:
         """
         # 隐藏主窗口
         self.root.withdraw()
+        self.root.update()
 
         # 创建一个新的全屏窗口用于截屏
         screen_win = tk.Toplevel()
@@ -235,9 +242,18 @@ class ImageViewerApp:
         canvas.bind("<ButtonRelease-1>", on_mouse_up)
 
     def save_captured_area(self, start_point, end_point):
+
         screenshot = ImageGrab.grab(bbox=(*start_point, *end_point))
-        temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-        screenshot.save(temp_file, format="PNG")
+        if screenshot.mode in ('RGBA', 'LA'):
+
+            screenshot = screenshot.convert('RGB')
+        os.makedirs('temp', exist_ok=True)
+        temp_file = tempfile.NamedTemporaryFile(
+            suffix=".jpg",
+            delete=False,
+            dir='temp'  # 新增目录指定参数
+        )
+        screenshot.save(temp_file, format="JPEG")
         temp_file.close()#close()方法用于关闭文件。关闭后文件不能再进行读写操作。为什么要关闭文件 a:关闭文件是为了释放资源，避免资源泄漏
 
         self.current_data["imported_source_path"] = temp_file.name
@@ -265,7 +281,7 @@ class ImageViewerApp:
         self.annotator_entry.grid(row=0, column=1, pady=2, sticky='w')
 
         tk.Label(frame, text="页码-第").grid(row=1, column=0, sticky='e', padx=5)
-        self.page_num_entry = tk.Entry(frame, width=6)
+        self.page_num_entry = tk.Entry(frame, width=3)
         self.page_num_entry.grid(row=1, column=1, pady=2, sticky='w')
         tk.Label(frame, text="页").grid(row=1, column=2, sticky='w')
 
@@ -397,8 +413,6 @@ class ImageViewerApp:
             current_image_filename = os.path.basename(image_path)#basename() 方法返回文件名
             json_path = os.path.join("output", os.path.splitext(current_image_filename)[0] + ".json")
 
-            # 清除旧图片（在加载新图片前）
-            self.cleanup_old_images()
 
             new_data_template = {
                 "image": current_image_filename,
@@ -553,7 +567,7 @@ class ImageViewerApp:
             try:
                 # 只保留最新图片（删除旧记录）
                 pron_names = list(set(
-                    [p.get("zhuang_spelling", "unnamed")
+                    [p.get("zhuang_spelling", "unnamed")#
                      for p in self.current_data["pronunciations"]]
                 ))
 
@@ -561,7 +575,7 @@ class ImageViewerApp:
                 for pron_name in pron_names:
                     pron_name_clean = re.sub(r'[\\/*?:"<>|]', "", pron_name)#re.sub()函数用于替换字符串中的匹配项。
                     _, ext = os.path.splitext(temp_source)
-                    ext = ext if ext else ".png"
+                    ext = ext if ext else ".jpg"
                     filename = f"{pron_name_clean}_{timestamp}{ext}"
                     dest_path = os.path.join(input_dir, filename)
 
@@ -572,9 +586,8 @@ class ImageViewerApp:
                         shutil.copyfile(temp_source, dest_path)
 
                     imported_images.append(filename)
-
-                self.current_data["imported_image"] = imported_images
-                self.current_data["imported_source_path"] = ""
+                self.current_data["imported_image_path"] = dest_path
+                self.current_data["imported_image"] = imported_images#和append有什么区别 a:append()方法用于在列表的末尾添加新的对象。extend()方法用于在列表的末尾一次性追加另一个序列中的多个值（用新列表扩展原来的列表）。
             except Exception as e:
                 messagebox.showerror("错误", f"文件处理失败: {str(e)}")
                 return
@@ -756,6 +769,28 @@ class ImageViewerApp:
                     print(f"已删除旧图片: {old_path}")
             except Exception as e:
                 print(f"删除旧图片失败: {str(e)}")
+
+    def show_enlarged_image(self, image_path):
+        """显示放大后的图片"""
+        try:
+            win = tk.Toplevel(self.root)
+            win.title("放大预览")
+
+            img = Image.open(image_path)
+            # 根据屏幕尺寸调整图片大小
+            screen_width = self.root.winfo_screenwidth()
+            screen_height = self.root.winfo_screenheight()
+            img.thumbnail((screen_width - 100, screen_height - 100))
+
+            photo = ImageTk.PhotoImage(img)
+            label = tk.Label(win, image=photo)
+            label.image = photo  # 保持引用
+            label.pack(padx=10, pady=10)
+
+            # 双击关闭窗口
+            label.bind("<Double-Button-1>", lambda e: win.destroy())
+        except Exception as e:
+            messagebox.showerror("错误", f"无法加载图片：{str(e)}")
 
 
 if __name__ == "__main__":
