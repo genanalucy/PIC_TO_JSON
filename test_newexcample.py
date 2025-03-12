@@ -43,7 +43,7 @@ class ImageViewerApp:
             try:
                 with open(config_path, "r") as f:
                     config = json.load(f)
-                    last_index = config.get("last_index", 0)
+                    last_index = config.get("last_index", 0)#get（）使用方法，如果键不存在，返回默认值
                     if 0 <= last_index < len(self.image_files):
                         self.current_image_index = last_index
             except:
@@ -104,7 +104,7 @@ class ImageViewerApp:
             btn = tk.Button(nav_frame1, text=text, width=6, command=cmd)
             if text == "提交":
                 btn.config(width=8, bg='#4CAF50')
-            btn.pack(side=tk.LEFT, padx=2)
+            btn.pack(side=tk.LEFT, padx=2)#pack是什么意思 a:pack()函数是tkinter中的一个函数，用于在窗口中放置组件。它用于在窗口中放置组件，并设置组件的位置、大小、边框、背景色等属性。
 
         self.page_entry = tk.Entry(nav_frame1, width=6)
         self.page_entry.pack(side=tk.LEFT, padx=5)
@@ -168,29 +168,54 @@ class ImageViewerApp:
                     print(f"缩略图加载失败: {str(e)}")
 
     def capture_screen(self):
+        """
+        截取屏幕的函数。
+
+        该函数通过创建一个全屏的透明窗口来捕获用户选择的屏幕区域。
+        它使用Tkinter库来处理图形界面，并在用户使用鼠标绘制矩形区域后保存该区域的坐标。
+        """
+        # 隐藏主窗口
         self.root.withdraw()
+
+        # 创建一个新的全屏窗口用于截屏
         screen_win = tk.Toplevel()
         screen_win.attributes('-fullscreen', True)
-        screen_win.attributes('-alpha', 0.3)
+        #screen_win.attributes('-alpha', 0.3)
         screen_win.configure(cursor="crosshair")
 
+        # 初始化坐标变量和矩形ID
         start_x = start_y = end_x = end_y = 0
         rect_id = None
 
         def on_mouse_down(event):
+            """
+            处理鼠标按下事件。
+
+            记录鼠标按下的位置，作为矩形的起始点。
+            """
             nonlocal start_x, start_y
-            start_x, start_y = event.x, event.y
+            start_x, start_y = event.x, event.y#event.x和event.y是什么意思 a:event.x和event.y是鼠标点击的坐标位置
 
         def on_mouse_move(event):
-            nonlocal rect_id
+            """
+            处理鼠标移动事件。
+
+            当鼠标移动时，动态绘制矩形，并删除之前的矩形以实现更新。
+            """
+            nonlocal rect_id#nonlocal是什么意思 a:nonlocal关键字用来在函数或其他作用域中使用外层（非全局）变量。rect_id是什么意思 a:rect_id是矩形的ID
             if rect_id:
-                canvas.delete(rect_id)
-            rect_id = canvas.create_rectangle(
+                canvas.delete(rect_id)#canvas.delete()方法用于删除画布上的图形。
+            rect_id = canvas.create_rectangle(#canvas.create_rectangle()方法用于在画布上绘制矩形。
                 start_x, start_y, event.x, event.y,
-                outline='red', width=3
+                outline='red', width=1
             )
 
         def on_mouse_up(event):
+            """
+            处理鼠标释放事件。
+
+            记录鼠标释放的位置，关闭截屏窗口，并调用保存截取区域的方法。
+            """
             nonlocal end_x, end_y
             end_x, end_y = event.x, event.y
             screen_win.destroy()
@@ -200,8 +225,11 @@ class ImageViewerApp:
                 (max(start_x, end_x), max(start_y, end_y))
             )
 
+        # 创建并配置画布
         canvas = tk.Canvas(screen_win, cursor="crosshair")
         canvas.pack(fill=tk.BOTH, expand=True)
+
+        # 绑定鼠标事件
         canvas.bind("<ButtonPress-1>", on_mouse_down)
         canvas.bind("<B1-Motion>", on_mouse_move)
         canvas.bind("<ButtonRelease-1>", on_mouse_up)
@@ -210,7 +238,7 @@ class ImageViewerApp:
         screenshot = ImageGrab.grab(bbox=(*start_point, *end_point))
         temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
         screenshot.save(temp_file, format="PNG")
-        temp_file.close()
+        temp_file.close()#close()方法用于关闭文件。关闭后文件不能再进行读写操作。为什么要关闭文件 a:关闭文件是为了释放资源，避免资源泄漏
 
         self.current_data["imported_source_path"] = temp_file.name
         self.update_thumbnail_panel()  # 立即更新缩略图
@@ -366,7 +394,7 @@ class ImageViewerApp:
                 return
 
             image_path = self.image_files[self.current_image_index]
-            current_image_filename = os.path.basename(image_path)
+            current_image_filename = os.path.basename(image_path)#basename() 方法返回文件名
             json_path = os.path.join("output", os.path.splitext(current_image_filename)[0] + ".json")
 
             # 清除旧图片（在加载新图片前）
@@ -391,8 +419,8 @@ class ImageViewerApp:
 
             if os.path.exists(json_path):
                 with open(json_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    if isinstance(data, list) and len(data) > 0:
+                    data = json.load(f)#load（）方法将json数据转换为python对象
+                    if isinstance(data, list) and len(data) > 0:#isinstance()用法    a:isinstance() 函数来判断一个对象是否是一个已知的类型，类似 type()。
                         self.current_data = data[0]
                         self.current_data["annotator"] = new_data_template["annotator"]
                         self.current_data["page_info"] = new_data_template["page_info"]
@@ -410,9 +438,9 @@ class ImageViewerApp:
             self.word_num_entry.insert(0, self.current_data["page_info"].get("word_num", ""))
 
             # 加载主图片
-            img = Image.open(image_path)
-            img.thumbnail((1000, 1000))
-            photo = ImageTk.PhotoImage(img)
+            img = Image.open(image_path)#image.open()方法用于打开一个图片
+            img.thumbnail((1000, 1000))#thumbnail()方法用于将图像调整为给定的尺寸。
+            photo = ImageTk.PhotoImage(img)#ImageTk.PhotoImage()方法用于将图片转换为Tkinter的PhotoImage。
 
             self.img_canvas.image = photo
             self.img_canvas.delete("all")
@@ -434,7 +462,7 @@ class ImageViewerApp:
             print(f"错误: {str(e)}")
 
     def update_form(self):
-        pron = self.current_data["pronunciations"][self.current_pronunciation_index]
+        pron = self.current_data["pronunciations"][self.current_pronunciation_index]#pron是什么意思 a:pron是pronunciation的缩写，意思是发音
 
         self.zh_wen_entry.delete(0, tk.END)
         self.zh_wen_entry.insert(0, pron.get("zhuang_spelling", ""))
@@ -460,7 +488,7 @@ class ImageViewerApp:
         self.example_page.config(
             text=f"例句 {self.current_example_index + 1}/{len(entry['examples'])}")
 
-    def save_current_form(self):
+    def save_current_form(self):#保存当前表单
         self.current_data["annotator"] = self.annotator_entry.get()
         self.current_data["page_info"]["page_num"] = self.page_num_entry.get()
         self.current_data["page_info"]["word_num"] = self.word_num_entry.get()
@@ -500,15 +528,26 @@ class ImageViewerApp:
             messagebox.showerror("错误", "请输入有效数字")
 
     def submit_data(self):
+        """
+        提交数据函数，负责保存当前表单数据，清理旧图片，并将新图片移动到指定目录，
+        更新数据记录，并将当前数据保存为JSON格式文件。
+        """
+        # 保存当前表单数据
         self.save_current_form()
+        # 清理旧图片
         self.cleanup_old_images()
 
+        # 获取已导入的图片列表
         imported_images = list(self.current_data.get("imported_image", []))
+        # 获取导入的源文件路径
         temp_source = self.current_data.get("imported_source_path", "")
 
+        # 如果源文件路径存在
         if temp_source:
+            # 设置输入目录为input_image，并确保其存在
             input_dir = "input_image"
             os.makedirs(input_dir, exist_ok=True)
+            # 获取当前时间戳，用于生成唯一文件名
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
             try:
@@ -520,7 +559,7 @@ class ImageViewerApp:
 
                 # 生成唯一文件名
                 for pron_name in pron_names:
-                    pron_name_clean = re.sub(r'[\\/*?:"<>|]', "", pron_name)
+                    pron_name_clean = re.sub(r'[\\/*?:"<>|]', "", pron_name)#re.sub()函数用于替换字符串中的匹配项。
                     _, ext = os.path.splitext(temp_source)
                     ext = ext if ext else ".png"
                     filename = f"{pron_name_clean}_{timestamp}{ext}"
@@ -540,14 +579,19 @@ class ImageViewerApp:
                 messagebox.showerror("错误", f"文件处理失败: {str(e)}")
                 return
 
-        os.makedirs("output", exist_ok=True)
+        # 确保输出目录存在
+        os.makedirs("output", exist_ok=True)#os.makedirs() 方法用于递归创建目录。像 mkdir() 一样，但创建的所有中间级目录都将创建。
+        # 构造JSON文件名
         filename = f"{os.path.splitext(self.current_data['image'])[0]}.json"
         full_path = os.path.join("output", filename)
 
+        # 将当前数据保存为JSON格式文件
         with open(full_path, 'w', encoding='utf-8') as f:
             json.dump([self.current_data], f, ensure_ascii=False, indent=2)
 
+        # 显示成功消息
         messagebox.showinfo("成功", f"数据已保存到\n{full_path}")
+        # 显示下一张图片
         self.show_next_image()
 
     def on_close(self):
@@ -556,10 +600,20 @@ class ImageViewerApp:
         self.root.destroy()
 
     def delete_pronunciation(self):
+        """
+        删除当前读音及其所有词性信息。
+
+        此函数首先通过messagebox确认用户是否确实希望删除当前读音及其所有关联的词性信息。
+        如果用户确认删除，函数将保存当前表单数据，然后从数据中移除当前读音。
+
+        在删除读音后，如果当前数据中的读音列表变为空，函数将自动创建一个新的空读音条目，
+        以方便用户继续编辑。随后，函数重置当前读音、词条和示例的索引，并更新表单以反映
+        数据的变更。
+        """
         if messagebox.askyesno("确认", "确定要删除当前读音及其所有词性信息吗？"):
             original_index = self.current_pronunciation_index
             self.save_current_form()
-            del self.current_data["pronunciations"][original_index]
+            del self.current_data["pronunciations"][original_index]    #del是什么意思 a:del是delete的缩写，意思是删除
 
             if not self.current_data["pronunciations"]:
                 self.current_data["pronunciations"].append({
@@ -569,7 +623,7 @@ class ImageViewerApp:
                 })
 
             self.current_pronunciation_index = min(original_index, len(self.current_data["pronunciations"]) - 1)
-            self.current_entry_index = 0
+            self.current_entry_index = 0 #为什么要置0 a:因为删除了当前读音，所以要重新从0开始q:从1开始会怎么样 a:会报错，因为删除了当前读音，所以当前读音的索引就是0
             self.current_example_index = 0
             self.update_form()
 
