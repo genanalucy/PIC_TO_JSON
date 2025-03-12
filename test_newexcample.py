@@ -277,41 +277,22 @@ class ImageViewerApp:
         frame = tk.LabelFrame(parent, text="标注信息", font=("微软雅黑", 10), padx=10, pady=10)
         frame.pack(fill=tk.X, pady=5)
 
-        tk.Label(frame, text="标注作者:").grid(row=0, column=0, sticky='e', padx=5)
-        self.annotator_entry = tk.Entry(frame, width=25)
-        self.annotator_entry.grid(row=0, column=1, pady=2, sticky='w')
+        # 标注作者标签和输入框
+        tk.Label(frame, text="标注作者:").grid(row=0, column=0, padx=10, pady=5, sticky="e")  # 右对齐，增加适当的内边距
+        self.annotator_entry = tk.Entry(frame, width=5)  # 增加宽度以适应文本输入
+        self.annotator_entry.grid(row=0, column=1, padx=10, pady=5, sticky="w")  # 左对齐，增加适当的内边距
 
-        tk.Label(frame, text="页码-第").grid(row=1, column=0, sticky='e', padx=5)
-        self.page_num_entry = tk.Entry(frame, width=3)
-        self.page_num_entry.grid(row=1, column=1, pady=2, sticky='w')
-        tk.Label(frame, text="页").grid(row=1, column=2, sticky='w')
+        # 页码标签、输入框和“页”字
+        tk.Label(frame, text="页码-第").grid(row=1, column=0, padx=10, pady=5, sticky="e")  # 右对齐
+        self.page_num_entry = tk.Entry(frame, width=5)
+        self.page_num_entry.grid(row=1, column=1, padx=10, pady=5, sticky='w')  # 左对齐
+        tk.Label(frame, text="页").grid(row=1, column=2, padx=10, pady=5, sticky='w')
 
-        tk.Label(frame, text="字位置-第").grid(row=1, column=3, sticky='e', padx=5)
-        self.word_num_entry = tk.Entry(frame, width=6)
-        self.word_num_entry.grid(row=1, column=4, pady=2, sticky='w')
-        tk.Label(frame, text="个字").grid(row=1, column=5, sticky='w')
-
-    def create_pronunciation_section(self, parent):
-        frame = tk.LabelFrame(parent, text="读音信息", font=("微软雅黑", 10), padx=10, pady=10)
-        frame.pack(fill=tk.X, pady=5)
-
-        tk.Label(frame, text="壮文音:").grid(row=0, column=0, sticky='e', padx=5)
-        self.zh_wen_entry = tk.Entry(frame, width=25)
-        self.zh_wen_entry.grid(row=0, column=1, pady=2)
-
-        tk.Label(frame, text="国际音标:").grid(row=0, column=2, sticky='e', padx=5)
-        self.ipa_entry = tk.Entry(frame, width=25)
-        self.ipa_entry.grid(row=0, column=3, pady=2)
-
-
-        ctrl_frame = tk.Frame(frame)
-        ctrl_frame.grid(row=1, column=0, columnspan=4, pady=5)
-        tk.Button(ctrl_frame, text="添加新读音", command=self.add_new_pronunciation).pack(side=tk.LEFT, padx=2)
-        tk.Button(ctrl_frame, text="上一个", command=self.previous_pronunciation).pack(side=tk.LEFT, padx=2)
-        tk.Button(ctrl_frame, text="下一个", command=self.next_pronunciation).pack(side=tk.LEFT, padx=2)
-        tk.Button(ctrl_frame, text="删除读音", command=self.delete_pronunciation).pack(side=tk.LEFT, padx=2)
-        self.pronunciation_page = tk.Label(ctrl_frame, text="0/0")
-        self.pronunciation_page.pack(side=tk.LEFT, padx=5)
+        # 字位置标签、输入框和“个字”字
+        tk.Label(frame, text="字位置-第").grid(row=2, column=0, padx=10, pady=5, sticky="e")  # 右对齐
+        self.word_num_entry = tk.Entry(frame, width=5)
+        self.word_num_entry.grid(row=2, column=1, padx=10, pady=5, sticky="w")  # 左对齐
+        tk.Label(frame, text="个字").grid(row=2, column=2, padx=10, pady=5, sticky="w")
 
     def create_pos_section(self, parent):
         frame = tk.LabelFrame(parent, text="词性信息", font=("微软雅黑", 10), padx=10, pady=10)
@@ -319,16 +300,16 @@ class ImageViewerApp:
 
         fields = [
             ("词性(中文):", "part_of_speech", 25),
-            ("意思:", "meaning", 60),
-            ("例句（壮文）:", "example_zhuang", 60),
-            ("例句（中文）:", "example_chinese", 60)
+            ("意思:", "meaning", 25),
+            ("例句（壮文）:", "example_zhuang", 25),
+            ("例句（中文）:", "example_chinese", 25)
         ]
 
         self.pos_entries = {}
         for i, (label, field, width) in enumerate(fields):
-            tk.Label(frame, text=label).grid(row=i, column=0, sticky='e', padx=5, pady=2)
+            tk.Label(frame, text=label).grid(row=i, column=0, sticky='w', padx=5, pady=2)
             entry = tk.Entry(frame, width=width)
-            entry.grid(row=i, column=1, columnspan=3, sticky='ew', pady=2)
+            entry.grid(row=i, column=1, columnspan=3, sticky='w', pady=2)
             self.pos_entries[field] = entry
 
         pos_ctrl_frame = tk.Frame(frame)
@@ -346,7 +327,7 @@ class ImageViewerApp:
         tk.Button(example_ctrl_frame, text="上一条", command=self.previous_example).pack(side=tk.LEFT, padx=2)
         tk.Button(example_ctrl_frame, text="下一条", command=self.next_example).pack(side=tk.LEFT, padx=2)
         tk.Button(example_ctrl_frame, text="删除例句", command=self.delete_example).pack(side=tk.LEFT, padx=2)
-        self.example_page = tk.Label(example_ctrl_frame, text="例句 0/0")
+        self.example_page = tk.Label(example_ctrl_frame, text="0/0")
         self.example_page.pack(side=tk.LEFT, padx=5)
 
     def create_pronunciation_section(self, parent):
@@ -355,17 +336,17 @@ class ImageViewerApp:
 
         row = 0
         tk.Label(frame, text="对应汉字:").grid(row=row, column=0, sticky='e', padx=5)
-        self.chinese_char_entry = tk.Entry(frame, width=25)
+        self.chinese_char_entry = tk.Entry(frame, width=5)
         self.chinese_char_entry.grid(row=row, column=1, pady=2)#sticky是什么 a:
 
         row += 1
         tk.Label(frame, text="壮文音:").grid(row=row, column=0, sticky='e', padx=5)
-        self.zh_wen_entry = tk.Entry(frame, width=25)
+        self.zh_wen_entry = tk.Entry(frame, width=5)
         self.zh_wen_entry.grid(row=row, column=1, pady=2)
 
         row += 1
         tk.Label(frame, text="国际音标:").grid(row=row, column=0, sticky='e', padx=5)
-        self.ipa_entry = tk.Entry(frame, width=25)
+        self.ipa_entry = tk.Entry(frame, width=5)
         self.ipa_entry.grid(row=row, column=1, pady=2)
 
         row += 1
@@ -378,41 +359,6 @@ class ImageViewerApp:
         self.pronunciation_page = tk.Label(ctrl_frame, text="0/0")
         self.pronunciation_page.pack(side=tk.LEFT, padx=5)
 
-    def create_pos_section(self, parent):
-        frame = tk.LabelFrame(parent, text="词性信息", font=("微软雅黑", 10), padx=10, pady=10)
-        frame.pack(fill=tk.BOTH, expand=True, pady=5)
-
-        fields = [
-            ("词性(中文):", "part_of_speech", 25),
-            ("意思:", "meaning", 60),
-            ("例句（壮文）:", "example_zhuang", 60),
-            ("例句（中文）:", "example_chinese", 60)
-        ]
-
-        self.pos_entries = {}
-        for i, (label, field, width) in enumerate(fields):
-            tk.Label(frame, text=label).grid(row=i, column=0, sticky='e', padx=5, pady=2)
-            entry = tk.Entry(frame, width=width)
-            entry.grid(row=i, column=1, columnspan=3, sticky='ew', pady=2)
-            self.pos_entries[field] = entry
-
-        pos_ctrl_frame = tk.Frame(frame)
-        pos_ctrl_frame.grid(row=4, column=0, columnspan=4, pady=5)
-        tk.Button(pos_ctrl_frame, text="添加新词性", command=self.add_new_entry).pack(side=tk.LEFT, padx=2)
-        tk.Button(pos_ctrl_frame, text="上一个", command=self.previous_entry).pack(side=tk.LEFT, padx=2)
-        tk.Button(pos_ctrl_frame, text="下一个", command=self.next_entry).pack(side=tk.LEFT, padx=2)
-        tk.Button(pos_ctrl_frame, text="删除词性", command=self.delete_entry).pack(side=tk.LEFT, padx=2)
-        self.pos_page = tk.Label(pos_ctrl_frame, text="0/0")
-        self.pos_page.pack(side=tk.LEFT, padx=5)
-
-        example_ctrl_frame = tk.Frame(frame)
-        example_ctrl_frame.grid(row=5, column=0, columnspan=4, pady=5)
-        tk.Button(example_ctrl_frame, text="新建例句", command=self.add_new_example).pack(side=tk.LEFT, padx=2)
-        tk.Button(example_ctrl_frame, text="上一条", command=self.previous_example).pack(side=tk.LEFT, padx=2)
-        tk.Button(example_ctrl_frame, text="下一条", command=self.next_example).pack(side=tk.LEFT, padx=2)
-        tk.Button(example_ctrl_frame, text="删除例句", command=self.delete_example).pack(side=tk.LEFT, padx=2)
-        self.example_page = tk.Label(example_ctrl_frame, text="例句 0/0")
-        self.example_page.pack(side=tk.LEFT, padx=5)
 
     def load_current_image(self):
         try:
@@ -514,7 +460,7 @@ class ImageViewerApp:
         self.pos_page.config(
             text=f"{self.current_entry_index + 1}/{len(pron['entries'])}")
         self.example_page.config(
-            text=f"例句 {self.current_example_index + 1}/{len(entry['examples'])}")
+            text=f"{self.current_example_index + 1}/{len(entry['examples'])}")
 
     def save_current_form(self):#保存当前表单
         self.current_data["annotator"] = self.annotator_entry.get()
@@ -565,7 +511,7 @@ class ImageViewerApp:
         self.save_current_form()
         # 清理旧图片
         self.cleanup_old_images()
-
+        self.current_data["imported_image"] = []  # 清空历史记录
         # 获取已导入的图片列表
         imported_images = list(self.current_data.get("imported_image", []))
         # 获取导入的源文件路径
