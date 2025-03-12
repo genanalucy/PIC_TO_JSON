@@ -180,8 +180,8 @@ class ImageViewerApp:
         # 创建一个新的全屏窗口用于截屏
         screen_win = tk.Toplevel()
         screen_win.attributes('-fullscreen', True)
-        #screen_win.attributes('-alpha', 0.3)
-        screen_win.configure(cursor="crosshair")
+        screen_win.attributes('-alpha', 0.3)
+        screen_win.configure(cursor="crosshair")#
 
         # 初始化坐标变量和矩形ID
         start_x = start_y = end_x = end_y = 0
