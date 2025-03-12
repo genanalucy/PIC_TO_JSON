@@ -23,6 +23,7 @@ class ImageViewerApp:
                 "page_num": "",
                 "word_num": ""
             },
+            "simplified_Chinese_character":"",
             "imported_source_path": "",
             "imported_image": [],
             "pronunciations": []
@@ -302,6 +303,7 @@ class ImageViewerApp:
         self.ipa_entry = tk.Entry(frame, width=25)
         self.ipa_entry.grid(row=0, column=3, pady=2)
 
+
         ctrl_frame = tk.Frame(frame)
         ctrl_frame.grid(row=1, column=0, columnspan=4, pady=5)
         tk.Button(ctrl_frame, text="添加新读音", command=self.add_new_pronunciation).pack(side=tk.LEFT, padx=2)
@@ -351,16 +353,24 @@ class ImageViewerApp:
         frame = tk.LabelFrame(parent, text="读音信息", font=("微软雅黑", 10), padx=10, pady=10)
         frame.pack(fill=tk.X, pady=5)
 
-        tk.Label(frame, text="壮文音:").grid(row=0, column=0, sticky='e', padx=5)
+        row = 0
+        tk.Label(frame, text="对应汉字:").grid(row=row, column=0, sticky='e', padx=5)
+        self.chinese_char_entry = tk.Entry(frame, width=25)
+        self.chinese_char_entry.grid(row=row, column=1, pady=2)#sticky是什么 a:
+
+        row += 1
+        tk.Label(frame, text="壮文音:").grid(row=row, column=0, sticky='e', padx=5)
         self.zh_wen_entry = tk.Entry(frame, width=25)
-        self.zh_wen_entry.grid(row=0, column=1, pady=2)
+        self.zh_wen_entry.grid(row=row, column=1, pady=2)
 
-        tk.Label(frame, text="国际音标:").grid(row=0, column=2, sticky='e', padx=5)
+        row += 1
+        tk.Label(frame, text="国际音标:").grid(row=row, column=0, sticky='e', padx=5)
         self.ipa_entry = tk.Entry(frame, width=25)
-        self.ipa_entry.grid(row=0, column=3, pady=2)
+        self.ipa_entry.grid(row=row, column=1, pady=2)
 
+        row += 1
         ctrl_frame = tk.Frame(frame)
-        ctrl_frame.grid(row=1, column=0, columnspan=4, pady=5)
+        ctrl_frame.grid(row=row, column=0, columnspan=4, pady=5)
         tk.Button(ctrl_frame, text="添加新读音", command=self.add_new_pronunciation).pack(side=tk.LEFT, padx=2)
         tk.Button(ctrl_frame, text="上一个", command=self.previous_pronunciation).pack(side=tk.LEFT, padx=2)
         tk.Button(ctrl_frame, text="下一个", command=self.next_pronunciation).pack(side=tk.LEFT, padx=2)
@@ -419,6 +429,7 @@ class ImageViewerApp:
                 "annotator": self.current_data.get("annotator", ""),  # 保留标注者信息
                 "page_info": self.current_data.get("page_info", {"page_num": "", "word_num": ""}),  # 保留页码信息
                 "imported_source_path": "",
+                "simplified_Chinese_character": self.current_data.get("simplified_Chinese_character", ""),
                 "imported_image": [],  # 重置导入图片记录
                 "pronunciations": [{
                     "zhuang_spelling": "",
@@ -478,6 +489,9 @@ class ImageViewerApp:
     def update_form(self):
         pron = self.current_data["pronunciations"][self.current_pronunciation_index]#pron是什么意思 a:pron是pronunciation的缩写，意思是发音
 
+        self.chinese_char_entry.delete(0, tk.END)
+        self.chinese_char_entry.insert(0, self.current_data.get("simplified_Chinese_character", ""))
+
         self.zh_wen_entry.delete(0, tk.END)
         self.zh_wen_entry.insert(0, pron.get("zhuang_spelling", ""))
         self.ipa_entry.delete(0, tk.END)
@@ -506,6 +520,7 @@ class ImageViewerApp:
         self.current_data["annotator"] = self.annotator_entry.get()
         self.current_data["page_info"]["page_num"] = self.page_num_entry.get()
         self.current_data["page_info"]["word_num"] = self.word_num_entry.get()
+        self.current_data["simplified_Chinese_character"] = self.chinese_char_entry.get()
 
         pron = self.current_data["pronunciations"][self.current_pronunciation_index]
         pron["zhuang_spelling"] = self.zh_wen_entry.get()
