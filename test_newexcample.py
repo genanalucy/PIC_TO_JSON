@@ -29,6 +29,7 @@ class ImageViewerApp:
             "pronunciations": []
         }
 
+
         # 加载图片文件
         image_dir = "image"
         output_dir = "output"
@@ -40,6 +41,9 @@ class ImageViewerApp:
         # 加载配置文件
         config_path = "config.json"
         self.current_image_index = 0
+        self.current_pronunciation_index = 0  # 当前读音索引
+        self.current_entry_index = 0  # 当前词性条目索引
+        self.current_example_index = 0
         if os.path.exists(config_path):
             try:
                 with open(config_path, "r") as f:
@@ -123,15 +127,18 @@ class ImageViewerApp:
             tk.Button(nav_frame2, text=text, width=8, command=cmd).pack(side=tk.LEFT, padx=2)
 
     def update_thumbnail_panel(self):
-        """更新缩略图显示（只显示最新图片）"""
+        """更新缩略图显示（显示当前读音的截图）"""
         # 清空现有缩略图
         for label in self.thumbnail_labels:
             label.destroy()
         self.thumbnail_labels.clear()
         self.thumbnail_images.clear()
 
+        # 获取当前读音数据
+        pron = self.current_data["pronunciations"][self.current_pronunciation_index]
+
         # 优先级：临时图片 > 已提交图片
-        temp_path = self.current_data.get("imported_source_path", "")
+        temp_path = pron.get("imported_source_path", "")
         if temp_path and os.path.exists(temp_path):
             try:
                 img = Image.open(temp_path)
@@ -140,22 +147,19 @@ class ImageViewerApp:
                 label = tk.Label(self.thumbnail_frame, image=photo,
                                  borderwidth=2, relief="solid",
                                  highlightbackground="red")
-                label.bind("<Button-1>",
-                           lambda e, path=temp_path: self.show_enlarged_image(path))
-
+                label.bind("<Button-1>", lambda e, path=temp_path: self.show_enlarged_image(path))
                 label.image = photo
                 label.pack(side=tk.LEFT, padx=2)
                 self.thumbnail_labels.append(label)
                 self.thumbnail_images.append(photo)
-                return  # 有临时图片时只显示临时图片
+                return
             except Exception as e:
                 print(f"临时缩略图加载失败: {str(e)}")
 
         # 显示已提交的图片（只显示最新一张）
         input_dir = "input_image"
-        latest_image = None
-        if self.current_data.get("imported_image"):
-            latest_image = self.current_data["imported_image"][-1]
+        if pron.get("imported_image"):
+            latest_image = pron["imported_image"][-1]
             img_path = os.path.join(input_dir, latest_image)
             if os.path.exists(img_path):
                 try:
@@ -166,9 +170,7 @@ class ImageViewerApp:
                                      borderwidth=1, relief="solid")
                     label.image = photo
                     label.pack(side=tk.LEFT, padx=2)
-                    label.bind("<Button-1>",
-                               lambda e, path=temp_path: self.show_enlarged_image(path))
-
+                    label.bind("<Button-1>", lambda e, path=img_path: self.show_enlarged_image(path))
                     self.thumbnail_labels.append(label)
                     self.thumbnail_images.append(photo)
                 except Exception as e:
@@ -246,8 +248,8 @@ class ImageViewerApp:
 
         screenshot = ImageGrab.grab(bbox=(*start_point, *end_point))
         if screenshot.mode in ('RGBA', 'LA'):
-
             screenshot = screenshot.convert('RGB')
+
         os.makedirs('temp', exist_ok=True)
         temp_file = tempfile.NamedTemporaryFile(
             suffix=".jpg",
@@ -257,7 +259,8 @@ class ImageViewerApp:
         screenshot.save(temp_file, format="JPEG")
         temp_file.close()#close()方法用于关闭文件。关闭后文件不能再进行读写操作。为什么要关闭文件 a:关闭文件是为了释放资源，避免资源泄漏
 
-        self.current_data["imported_source_path"] = temp_file.name
+        pron = self.current_data["pronunciations"][self.current_pronunciation_index]
+        pron["imported_source_path"] = temp_file.name
         self.update_thumbnail_panel()  # 立即更新缩略图
         messagebox.showinfo(
             "截图成功",
@@ -275,23 +278,48 @@ class ImageViewerApp:
         scrollbar_x = tk.Scrollbar(right_frame, orient=tk.HORIZONTAL, command=canvas.xview)
         scrollable_frame = tk.Frame(canvas)
 
+        # 配置滚动区域
         scrollable_frame.bind(
             "<Configure>",
-            lambda e: canvas.configure(
-                scrollregion=canvas.bbox("all")
-            )
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
 
+        # 创建视口并配置滚动
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
 
+        # 布局滚动条
         scrollbar_y.pack(side=tk.RIGHT, fill=tk.Y)
         scrollbar_x.pack(side=tk.BOTTOM, fill=tk.X)
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
+        # 创建表单内容
         self.create_annotation_info_section(scrollable_frame)
         self.create_pronunciation_section(scrollable_frame)
         self.create_pos_section(scrollable_frame)
+
+        # 绑定滚轮滚动事件（跨平台支持）
+        def on_mouse_wheel(event):
+            # Windows/Linux
+            if event.num == 4 or event.delta > 0:
+                canvas.yview_scroll(-1, "units")
+            elif event.num == 5 or event.delta < 0:
+                canvas.yview_scroll(1, "units")
+
+        # 绑定到画布和所有子部件
+        def bind_wheel(widget):
+            widget.bind("<MouseWheel>", on_mouse_wheel)  # Windows
+            widget.bind("<Button-4>", on_mouse_wheel)  # Linux向上
+            widget.bind("<Button-5>", on_mouse_wheel)  # Linux向下
+            for child in widget.winfo_children():
+                bind_wheel(child)
+
+        # 应用绑定到整个滚动区域
+        bind_wheel(canvas)
+        bind_wheel(scrollable_frame)
+
+        # 添加触摸板滚动支持（可选）
+        canvas.bind("<Shift-MouseWheel>", lambda e: canvas.xview_scroll(int(-1 * (e.delta)), "units"))
 
     def create_annotation_info_section(self, parent):
         frame = tk.LabelFrame(parent, text="标注信息", font=("微软雅黑", 10), padx=10, pady=10)
@@ -389,17 +417,16 @@ class ImageViewerApp:
             current_image_filename = os.path.basename(image_path)#basename() 方法返回文件名
             json_path = os.path.join("output", os.path.splitext(current_image_filename)[0] + ".json")
 
-
             new_data_template = {
                 "image": current_image_filename,
-                "annotator": self.current_data.get("annotator", ""),  # 保留标注者信息
-                "page_info": self.current_data.get("page_info", {"page_num": "", "word_num": ""}),  # 保留页码信息
-                "imported_source_path": "",
+                "annotator": self.current_data.get("annotator", ""),
+                "page_info": self.current_data.get("page_info", {"page_num": "", "word_num": ""}),
                 "simplified_Chinese_character": "",
-                "imported_image": [],  # 重置导入图片记录
                 "pronunciations": [{
                     "zhuang_spelling": "",
                     "ipa": "",
+                    "imported_source_path": "",  # 新增
+                    "imported_image": [],  # 新增
                     "entries": [{
                         "part_of_speech": "",
                         "meaning": "",
@@ -413,8 +440,11 @@ class ImageViewerApp:
                     data = json.load(f)#load（）方法将json数据转换为python对象
                     if isinstance(data, list) and len(data) > 0:#isinstance()用法    a:isinstance() 函数来判断一个对象是否是一个已知的类型，类似 type()。
                         self.current_data = data[0]
+                        if not self.current_data["pronunciations"]:
+                            self.current_data["pronunciations"] = new_data_template["pronunciations"].copy()
                         self.current_data["annotator"] = new_data_template["annotator"]
                         self.current_data["page_info"] = new_data_template["page_info"]
+
             else:
                 self.current_data = new_data_template
 
@@ -530,47 +560,71 @@ class ImageViewerApp:
         # 保存当前表单数据
         self.save_current_form()
         # 清理旧图片
-        self.cleanup_old_images()
-        self.current_data["imported_image"] = []  # 清空历史记录
+        #self.cleanup_old_images()
+        #self.current_data["imported_image"] = []  # 清空历史记录
         # 获取已导入的图片列表
-        imported_images = list(self.current_data.get("imported_image", []))
+        imported_images = []
         # 获取导入的源文件路径
-        temp_source = self.current_data.get("imported_source_path", "")
-
-        # 如果源文件路径存在
-        if temp_source:
-            # 设置输入目录为input_image，并确保其存在
-            input_dir = "input_image"
-            os.makedirs(input_dir, exist_ok=True)
-            # 获取当前时间戳，用于生成唯一文件名
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        for pron in self.current_data["pronunciations"]:
+            temp_source = pron.get("imported_source_path", "")
+            if not temp_source:
+                continue  # 没有需要处理的文件
 
             try:
-                # 只保留最新图片（删除旧记录）
-                pron_names = list(set(
-                    [p.get("zhuang_spelling", "unnamed")#
-                     for p in self.current_data["pronunciations"]]
-                ))
+                # 保存旧文件信息
+                old_imported_images = pron.get("imported_image", [])
+                old_source_path = pron.get("imported_source_path", "")
 
-                # 生成唯一文件名
-                for pron_name in pron_names:
-                    pron_name_clean = re.sub(r'[\\/*?:"<>|]', "", pron_name)#re.sub()函数用于替换字符串中的匹配项。
-                    _, ext = os.path.splitext(temp_source)
-                    ext = ext if ext else ".jpg"
-                    filename = f"{pron_name_clean}_{timestamp}{ext}"
-                    dest_path = os.path.join(input_dir, filename)
+                # 创建输入目录
+                input_dir = "input_image"
+                os.makedirs(input_dir, exist_ok=True)
 
-                    # 移动文件代替复制（提升性能）
-                    if temp_source.startswith(tempfile.gettempdir()):
-                        shutil.move(temp_source, dest_path)
-                    else:
-                        shutil.copyfile(temp_source, dest_path)
+                # 生成时间戳（每个文件独立）
+                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
-                    imported_images.append(filename)
-                self.current_data["imported_image_path"] = dest_path
-                self.current_data["imported_image"] = imported_images#和append有什么区别 a:append()方法用于在列表的末尾添加新的对象。extend()方法用于在列表的末尾一次性追加另一个序列中的多个值（用新列表扩展原来的列表）。
+                # 获取读音名称并清理非法字符
+                pron_name = pron.get("zhuang_spelling", "unnamed")
+                pron_name_clean = re.sub(r'[\\/*?:"<>|]', "", pron_name)
+
+                # 处理文件扩展名
+                _, ext = os.path.splitext(temp_source)
+                ext = ext if ext else ".jpg"
+
+                # 生成新文件名和路径
+                new_filename = f"{pron_name_clean}_{timestamp}{ext}"
+                dest_path = os.path.join(input_dir, new_filename)
+
+                # 移动或复制文件
+                if temp_source.startswith(tempfile.gettempdir()):
+                    shutil.move(temp_source, dest_path)
+                else:
+                    shutil.copyfile(temp_source, dest_path)
+
+                # 更新数据
+                pron["imported_source_path"] = dest_path
+                pron["imported_image"] = [new_filename]
+
+                # 删除旧文件（仅在input_image目录中的文件）
+                # 1. 删除历史记录文件
+                for old_file in old_imported_images:
+                    old_path = os.path.join(input_dir, old_file)
+                    if os.path.exists(old_path) and old_path != dest_path:
+                        os.remove(old_path)
+                        print(f"已删除历史文件: {old_path}")
+
+                # 2. 删除旧的source文件（如果与新文件不同且在input目录）
+                if (old_source_path.startswith(input_dir)
+                        and old_source_path != dest_path
+                        and os.path.exists(old_source_path)):
+                    os.remove(old_source_path)
+                    print(f"已删除旧源文件: {old_source_path}")
+
             except Exception as e:
-                messagebox.showerror("错误", f"文件处理失败: {str(e)}")
+                messagebox.showerror("错误",
+                                     f"文件处理失败: {str(e)}\n"
+                                     f"读音：{pron.get('zhuang_spelling', '未知')}\n"
+                                     f"原路径：{temp_source}"
+                                     )
                 return
 
         # 确保输出目录存在
@@ -585,8 +639,8 @@ class ImageViewerApp:
 
         # 显示成功消息
         messagebox.showinfo("成功", f"数据已保存到\n{full_path}")
-        # 显示下一张图片
-        self.show_next_image()
+        """# 显示下一张图片
+        self.show_next_image()"""
 
     def on_close(self):
         with open("config.json", "w") as f:
@@ -645,6 +699,8 @@ class ImageViewerApp:
         new_pron = {
             "zhuang_spelling": "",
             "ipa": "",
+            "imported_source_path": "",  # 新增
+            "imported_image": [],  # 新增
             "entries": [{
                 "part_of_speech": "",
                 "meaning": "",
@@ -664,6 +720,7 @@ class ImageViewerApp:
             self.current_entry_index = 0
             self.current_example_index = 0
             self.update_form()
+            self.update_thumbnail_panel()
 
     def next_pronunciation(self):
         if self.current_pronunciation_index < len(self.current_data["pronunciations"]) - 1:
@@ -672,6 +729,7 @@ class ImageViewerApp:
             self.current_entry_index = 0
             self.current_example_index = 0
             self.update_form()
+            self.update_thumbnail_panel()
 
     def add_new_entry(self):
         self.save_current_form()
@@ -732,24 +790,27 @@ class ImageViewerApp:
             ]
         )
         if file_path:
-            self.current_data["imported_source_path"] = file_path
+            pron = self.current_data["pronunciations"][self.current_pronunciation_index]
+            pron["imported_source_path"] = file_path
             self.update_thumbnail_panel()  # 立即更新缩略图
             messagebox.showinfo("导入成功", f"已选择图片: {os.path.basename(file_path)}")
 
+    """
+    清理旧文件
     def cleanup_old_images(self):
-        """清理旧图片（当切换到新图片时）"""
-        if not self.current_data.get("imported_image"):
+        pron = self.current_data["pronunciations"][self.current_pronunciation_index]
+        if not pron.get("imported_image"):
             return
 
         input_dir = "input_image"
-        for old_file in self.current_data["imported_image"]:
+        for old_file in pron["imported_image"]:
             old_path = os.path.join(input_dir, old_file)
             try:
                 if os.path.exists(old_path):
                     os.remove(old_path)
                     print(f"已删除旧图片: {old_path}")
             except Exception as e:
-                print(f"删除旧图片失败: {str(e)}")
+                print(f"删除旧图片失败: {str(e)}")"""
 
     def show_enlarged_image(self, image_path):
         """显示放大后的图片"""
