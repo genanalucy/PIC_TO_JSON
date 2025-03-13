@@ -8,7 +8,9 @@ import shutil
 from datetime import datetime
 import re
 import tempfile
-
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QScreen, QImage
+import sys
 
 class ImageViewerApp:
     def __init__(self, root):
@@ -177,96 +179,115 @@ class ImageViewerApp:
                     print(f"缩略图加载失败: {str(e)}")
 
     def capture_screen(self):
-        """
-        截取屏幕的函数。
-
-        该函数通过创建一个全屏的透明窗口来捕获用户选择的屏幕区域。
-        它使用Tkinter库来处理图形界面，并在用户使用鼠标绘制矩形区域后保存该区域的坐标。
-        """
+        """实现类似QQ的区域截图功能"""
         # 隐藏主窗口
         self.root.withdraw()
-        self.root.update()
 
-        # 创建一个新的全屏窗口用于截屏
-        screen_win = tk.Toplevel()
+        # 创建全屏透明窗口
+        screen_win = tk.Toplevel(self.root)
         screen_win.attributes('-fullscreen', True)
-        screen_win.attributes('-alpha', 0.3)
-        screen_win.configure(cursor="crosshair")#
+        screen_win.attributes('-alpha', 0.01)  # 完全透明但可捕获事件
+        screen_win.configure(cursor="crosshair")
 
-        # 初始化坐标变量和矩形ID
+        # 初始化坐标变量
         start_x = start_y = end_x = end_y = 0
         rect_id = None
+        selection_made = False  # 标记是否完成选择
 
         def on_mouse_down(event):
-            """
-            处理鼠标按下事件。
-
-            记录鼠标按下的位置，作为矩形的起始点。
-            """
             nonlocal start_x, start_y
-            start_x, start_y = event.x, event.y#event.x和event.y是什么意思 a:event.x和event.y是鼠标点击的坐标位置
+            start_x, start_y = event.x, event.y
+            screen_win.attributes('-alpha', 0.3)  # 显示半透明蒙版
 
         def on_mouse_move(event):
-            """
-            处理鼠标移动事件。
-
-            当鼠标移动时，动态绘制矩形，并删除之前的矩形以实现更新。
-            """
-            nonlocal rect_id#nonlocal是什么意思 a:nonlocal关键字用来在函数或其他作用域中使用外层（非全局）变量。rect_id是什么意思 a:rect_id是矩形的ID
+            nonlocal rect_id, start_x, start_y
             if rect_id:
-                canvas.delete(rect_id)#canvas.delete()方法用于删除画布上的图形。
-            rect_id = canvas.create_rectangle(#canvas.create_rectangle()方法用于在画布上绘制矩形。
+                canvas.delete(rect_id)
+            # 绘制红色选框
+            rect_id = canvas.create_rectangle(
                 start_x, start_y, event.x, event.y,
-                outline='red', width=1
+                outline='red', width=2, tags="selection"
             )
 
         def on_mouse_up(event):
-            """
-            处理鼠标释放事件。
-
-            记录鼠标释放的位置，关闭截屏窗口，并调用保存截取区域的方法。
-            """
-            nonlocal end_x, end_y
+            nonlocal end_x, end_y, selection_made
             end_x, end_y = event.x, event.y
+            selection_made = True
             screen_win.destroy()
-            self.root.deiconify()
-            self.save_captured_area(
-                (min(start_x, end_x), min(start_y, end_y)),
-                (max(start_x, end_x), max(start_y, end_y))
-            )
 
-        # 创建并配置画布
-        canvas = tk.Canvas(screen_win, cursor="crosshair")
+        # 创建画布覆盖全屏
+        canvas = tk.Canvas(screen_win, bg='gray', highlightthickness=0)
         canvas.pack(fill=tk.BOTH, expand=True)
 
-        # 绑定鼠标事件
+        # 绑定事件
         canvas.bind("<ButtonPress-1>", on_mouse_down)
         canvas.bind("<B1-Motion>", on_mouse_move)
         canvas.bind("<ButtonRelease-1>", on_mouse_up)
 
+        # 等待窗口关闭
+        self.root.wait_window(screen_win)
+        self.root.deiconify()
+
+        if not selection_made:
+            return  # 用户取消选择
+
+        # 转换为屏幕绝对坐标
+        abs_start_x = screen_win.winfo_x() + min(start_x, end_x)
+        abs_start_y = screen_win.winfo_y() + min(start_y, end_y)
+        abs_end_x = screen_win.winfo_x() + max(start_x, end_x)
+        abs_end_y = screen_win.winfo_y() + max(start_y, end_y)
+
+        # 执行截图
+        try:
+            app = QApplication(sys.argv)
+            screen = QDesktopWidget().screenGeometry()
+
+            # 计算区域参数
+            x = abs_start_x
+            y = abs_start_y
+            width = abs_end_x - abs_start_x
+            height = abs_end_y - abs_start_y
+
+            # 边界检查
+            x = max(0, min(x, screen.width()))
+            y = max(0, min(y, screen.height()))
+            width = max(1, min(width, screen.width() - x))
+            height = max(1, min(height, screen.height() - y))
+
+            # 获取屏幕截图
+            desktop = QApplication.desktop()
+            screenshot = QApplication.primaryScreen().grabWindow(
+                desktop.winId(),
+                x, y, width, height
+            )
+
+            # 保存临时文件
+            os.makedirs('temp', exist_ok=True)
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix=".png",
+                delete=False,
+                dir='temp'
+            )
+            screenshot.save(temp_file.name, "PNG")
+
+            # 更新当前读音数据
+            pron = self.current_data["pronunciations"][self.current_pronunciation_index]
+            pron["imported_source_path"] = temp_file.name
+            self.update_thumbnail_panel()
+
+            # 显示提示
+            messagebox.showinfo(
+                "截图成功",
+                f"已保存选区截图\n尺寸: {width}x{height}\n路径: {temp_file.name}"
+            )
+        except Exception as e:
+            messagebox.showerror("错误", f"截图保存失败: {str(e)}")
+        finally:
+            QApplication.quit()  # 清理Qt资源
+
     def save_captured_area(self, start_point, end_point):
-
-        screenshot = ImageGrab.grab(bbox=(*start_point, *end_point))
-        if screenshot.mode in ('RGBA', 'LA'):
-            screenshot = screenshot.convert('RGB')
-
-        os.makedirs('temp', exist_ok=True)
-        temp_file = tempfile.NamedTemporaryFile(
-            suffix=".jpg",
-            delete=False,
-            dir='temp'  # 新增目录指定参数
-        )
-        screenshot.save(temp_file, format="JPEG")
-        temp_file.close()#close()方法用于关闭文件。关闭后文件不能再进行读写操作。为什么要关闭文件 a:关闭文件是为了释放资源，避免资源泄漏
-
-        pron = self.current_data["pronunciations"][self.current_pronunciation_index]
-        pron["imported_source_path"] = temp_file.name
-        self.update_thumbnail_panel()  # 立即更新缩略图
-        messagebox.showinfo(
-            "截图成功",
-            f"已捕获区域：{start_point} - {end_point}\n"
-            f"临时文件：{temp_file.name}"
-        )
+        # 不再需要此方法，功能已整合到capture_screen
+        pass
 
     def create_form_panel(self):
         right_frame = tk.Frame(self.main_frame)
