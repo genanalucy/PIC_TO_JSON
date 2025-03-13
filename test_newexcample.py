@@ -12,6 +12,7 @@ import mss
 
 
 class ImageViewerApp:
+
     def __init__(self, root):
         self.root = root
         self.root.title("字典json生成")
