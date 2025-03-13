@@ -8,6 +8,7 @@ import shutil
 from datetime import datetime
 import re
 import tempfile
+import mss
 
 
 class ImageViewerApp:
@@ -175,6 +176,86 @@ class ImageViewerApp:
                     self.thumbnail_images.append(photo)
                 except Exception as e:
                     print(f"缩略图加载失败: {str(e)}")
+    def capture_screen(self):
+        """
+        截取屏幕的函数。
+
+        该函数通过创建一个全屏的透明窗口来捕获用户选择的屏幕区域。
+        它使用Tkinter库来处理图形界面，并在用户使用鼠标绘制矩形区域后保存该区域的坐标。
+        """
+        # 隐藏主窗口
+        self.root.withdraw()
+        self.root.update()
+
+        # 创建一个新的全屏窗口用于截屏
+        screen_win = tk.Toplevel()
+        screen_win.attributes('-fullscreen', True)
+        screen_win.attributes('-alpha', 0.3)
+        screen_win.configure(cursor="crosshair")
+
+        # 初始化坐标变量和矩形ID
+        start_x = start_y = end_x = end_y = 0
+        rect_id = None
+
+        def on_mouse_down(event):
+            """
+            处理鼠标按下事件。
+
+            记录鼠标按下的位置，作为矩形的起始点。
+            """
+            nonlocal start_x, start_y
+            start_x, start_y = event.x, event.y
+
+        def on_mouse_move(event):
+            """
+            处理鼠标移动事件。
+
+            当鼠标移动时，动态绘制矩形，并删除之前的矩形以实现更新。
+            """
+            nonlocal rect_id
+            if rect_id:
+                canvas.delete(rect_id)
+            rect_id = canvas.create_rectangle(
+                start_x, start_y, event.x, event.y,
+                outline='red', width=1
+            )
+
+        def on_mouse_up(event):
+            """
+            处理鼠标释放事件。
+
+            记录鼠标释放的位置，关闭截屏窗口，并调用保存截取区域的方法。
+            """
+            nonlocal end_x, end_y
+            end_x, end_y = event.x, event.y
+            screen_win.destroy()
+            self.root.deiconify()
+            self.save_captured_area(
+                (min(start_x, end_x), min(start_y, end_y)),
+                (max(start_x, end_x), max(start_y, end_y))
+            )
+
+        # 创建并配置画布
+        canvas = tk.Canvas(screen_win, cursor="crosshair")
+        canvas.pack(fill=tk.BOTH, expand=True)
+
+        # 绑定鼠标事件
+        canvas.bind("<ButtonPress-1>", on_mouse_down)
+        canvas.bind("<B1-Motion>", on_mouse_move)
+        canvas.bind("<ButtonRelease-1>", on_mouse_up)
+
+    def save_captured_area(self, start_point, end_point):
+        with mss.mss() as sct:
+            screenshot = sct.shot(mon={'left': start_point[0], 'top': start_point[1], 'width': end_point[0] - start_point[0], 'height': end_point[1] - start_point[1]}, output="temp/screenshot.jpg")
+
+        pron = self.current_data["pronunciations"][self.current_pronunciation_index]
+        pron["imported_source_path"] = screenshot
+        self.update_thumbnail_panel()  # 立即更新缩略图
+        messagebox.showinfo(
+            "截图成功",
+            f"已捕获区域：{start_point} - {end_point}\n"
+            f"临时文件：{screenshot}"
+        )
 
     def capture_screen(self):
         """
