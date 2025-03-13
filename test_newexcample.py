@@ -269,9 +269,29 @@ class ImageViewerApp:
         right_frame = tk.Frame(self.main_frame)
         right_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True, padx=20)
 
-        self.create_annotation_info_section(right_frame)
-        self.create_pronunciation_section(right_frame)
-        self.create_pos_section(right_frame)
+        # 创建画布和滚动条
+        canvas = tk.Canvas(right_frame)
+        scrollbar_y = tk.Scrollbar(right_frame, orient=tk.VERTICAL, command=canvas.yview)
+        scrollbar_x = tk.Scrollbar(right_frame, orient=tk.HORIZONTAL, command=canvas.xview)
+        scrollable_frame = tk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
+
+        scrollbar_y.pack(side=tk.RIGHT, fill=tk.Y)
+        scrollbar_x.pack(side=tk.BOTTOM, fill=tk.X)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.create_annotation_info_section(scrollable_frame)
+        self.create_pronunciation_section(scrollable_frame)
+        self.create_pos_section(scrollable_frame)
 
     def create_annotation_info_section(self, parent):
         frame = tk.LabelFrame(parent, text="标注信息", font=("微软雅黑", 10), padx=10, pady=10)
@@ -323,7 +343,7 @@ class ImageViewerApp:
 
         example_ctrl_frame = tk.Frame(frame)
         example_ctrl_frame.grid(row=5, column=0, columnspan=4, pady=5)
-        tk.Button(example_ctrl_frame, text="新建例句", command=self.add_new_example).pack(side=tk.LEFT, padx=2)
+        tk.Button(example_ctrl_frame, text="添加新例句", command=self.add_new_example).pack(side=tk.LEFT, padx=2)
         tk.Button(example_ctrl_frame, text="上一条", command=self.previous_example).pack(side=tk.LEFT, padx=2)
         tk.Button(example_ctrl_frame, text="下一条", command=self.next_example).pack(side=tk.LEFT, padx=2)
         tk.Button(example_ctrl_frame, text="删除例句", command=self.delete_example).pack(side=tk.LEFT, padx=2)
@@ -375,7 +395,7 @@ class ImageViewerApp:
                 "annotator": self.current_data.get("annotator", ""),  # 保留标注者信息
                 "page_info": self.current_data.get("page_info", {"page_num": "", "word_num": ""}),  # 保留页码信息
                 "imported_source_path": "",
-                "simplified_Chinese_character": self.current_data.get("simplified_Chinese_character", ""),
+                "simplified_Chinese_character": "",
                 "imported_image": [],  # 重置导入图片记录
                 "pronunciations": [{
                     "zhuang_spelling": "",
