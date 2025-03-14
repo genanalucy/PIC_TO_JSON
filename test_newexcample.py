@@ -256,6 +256,7 @@ class ImageViewerApp:
         # 处理截图结果
         if selector.cropped_image and not selector.cropped_image.isNull():
             # 创建临时文件
+            os.makedirs('temp', exist_ok=True)
             temp_file = tempfile.NamedTemporaryFile(
                 suffix=".png",
                 delete=False,
@@ -710,6 +711,7 @@ class ImageViewerApp:
             self.current_entry_index = 0 #为什么要置0 a:因为删除了当前读音，所以要重新从0开始q:从1开始会怎么样 a:会报错，因为删除了当前读音，所以当前读音的索引就是0
             self.current_example_index = 0
             self.update_form()
+            self.update_thumbnail_panel()
 
     def delete_entry(self):
         pron = self.current_data["pronunciations"][self.current_pronunciation_index]
@@ -737,17 +739,20 @@ class ImageViewerApp:
             "ipa": "",
             "imported_source_path": "",  # 新增
             "imported_image": [],  # 新增
+            "dialect_type": "",
             "entries": [{
                 "part_of_speech": "",
                 "meaning": "",
                 "examples": [{"壮文": "", "中文": ""}]
             }]
         }
+
         self.current_data["pronunciations"].append(new_pron)
         self.current_pronunciation_index = len(self.current_data["pronunciations"]) - 1
         self.current_entry_index = 0
         self.current_example_index = 0
         self.update_form()
+        self.update_thumbnail_panel()
 
     def previous_pronunciation(self):
         if self.current_pronunciation_index > 0:
