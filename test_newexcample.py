@@ -435,6 +435,11 @@ class ImageViewerApp:
         self.ipa_entry.grid(row=row, column=1, pady=2)
 
         row += 1
+        self.dialect_var = tk.IntVar()
+        dialect = tk.Checkbutton(frame, text="方言", onvalue=1, offvalue=0,variable=self.dialect_var,)
+        dialect.grid(row=row, column=1)
+
+        row += 1
         ctrl_frame = tk.Frame(frame)
         ctrl_frame.grid(row=row, column=0, columnspan=4, pady=5)
         tk.Button(ctrl_frame, text="添加新读音", command=self.add_new_pronunciation).pack(side=tk.LEFT, padx=2)
@@ -529,6 +534,7 @@ class ImageViewerApp:
         self.zh_wen_entry.insert(0, pron.get("zhuang_spelling", ""))
         self.ipa_entry.delete(0, tk.END)
         self.ipa_entry.insert(0, pron.get("ipa", ""))
+        dialect_type = pron.get("dialect_type", 0)
 
         entry = pron["entries"][self.current_entry_index]
         self.pos_entries["part_of_speech"].delete(0, tk.END)
@@ -558,6 +564,7 @@ class ImageViewerApp:
         pron = self.current_data["pronunciations"][self.current_pronunciation_index]
         pron["zhuang_spelling"] = self.zh_wen_entry.get()
         pron["ipa"] = self.ipa_entry.get()
+        pron["dialect_type"] = int(self.dialect_var.get())
 
         entry = pron["entries"][self.current_entry_index]
         entry["part_of_speech"] = self.pos_entries["part_of_speech"].get()
@@ -739,7 +746,7 @@ class ImageViewerApp:
             "ipa": "",
             "imported_source_path": "",  # 新增
             "imported_image": [],  # 新增
-            "dialect_type": "",
+            "dialect_type": 0,
             "entries": [{
                 "part_of_speech": "",
                 "meaning": "",
