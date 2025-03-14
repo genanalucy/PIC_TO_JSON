@@ -8,6 +8,10 @@ import shutil
 from datetime import datetime
 import re
 import tempfile
+from PyQt5.QtWidgets import QApplication, QWidget, QMessageBox
+from PyQt5.QtGui import QPainter, QImage, QPen, QColor
+from PyQt5.QtCore import Qt, QPoint, QRect, QRect
+import sys
 
 
 class ImageViewerApp:
@@ -177,72 +181,104 @@ class ImageViewerApp:
                     print(f"缩略图加载失败: {str(e)}")
 
     def capture_screen(self):
-        """
-        截取屏幕的函数。
+        # 创建QApplication实例
+        app = QApplication(sys.argv)
 
-        该函数通过创建一个全屏的透明窗口来捕获用户选择的屏幕区域。
-        它使用Tkinter库来处理图形界面，并在用户使用鼠标绘制矩形区域后保存该区域的坐标。
-        """
-        # 隐藏主窗口
-        self.root.withdraw()
-        self.root.update()
+        # 截取全屏
+        screen = app.primaryScreen()
+        screenshot = screen.grabWindow(QApplication.desktop().winId())
+        full_image = screenshot.toImage()
 
-        # 创建一个新的全屏窗口用于截屏
-        screen_win = tk.Toplevel()
-        screen_win.attributes('-fullscreen', True)
-        screen_win.attributes('-alpha', 0.3)
-        screen_win.configure(cursor="crosshair")#
+        # 创建区域选择窗口
+        class ScreenshotSelector(QWidget):
+            def __init__(self, image):
+                super().__init__()
+                self.image = image
+                self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+                self.setAttribute(Qt.WA_TranslucentBackground)
+                self.setCursor(Qt.CrossCursor)
+                self.start_point = QPoint()
+                self.end_point = QPoint()
+                self.cropped_image = None
 
-        # 初始化坐标变量和矩形ID
-        start_x = start_y = end_x = end_y = 0
-        rect_id = None
+                # 适配多显示器：根据截图尺寸设置窗口大小
+                self.setGeometry(QRect(QPoint(0, 0), image.size()))
 
-        def on_mouse_down(event):
-            """
-            处理鼠标按下事件。
+            def paintEvent(self, event):
+                painter = QPainter(self)
+                # 绘制全屏截图背景
+                painter.drawImage(self.rect(), self.image)
 
-            记录鼠标按下的位置，作为矩形的起始点。
-            """
-            nonlocal start_x, start_y
-            start_x, start_y = event.x, event.y#event.x和event.y是什么意思 a:event.x和event.y是鼠标点击的坐标位置
+                # 绘制半透明蒙版
+                painter.setBrush(QColor(0, 0, 0, 100))
+                painter.drawRect(self.rect())
 
-        def on_mouse_move(event):
-            """
-            处理鼠标移动事件。
+                # 绘制选中区域
+                if not self.start_point.isNull() and not self.end_point.isNull():
+                    selection = QRect(self.start_point, self.end_point).normalized()
+                    # 显示原始内容
+                    painter.drawImage(selection, self.image, selection)
+                    # 绘制红色边框
+                    painter.setPen(QPen(Qt.red, 2))
+                    painter.drawRect(selection)
 
-            当鼠标移动时，动态绘制矩形，并删除之前的矩形以实现更新。
-            """
-            nonlocal rect_id#nonlocal是什么意思 a:nonlocal关键字用来在函数或其他作用域中使用外层（非全局）变量。rect_id是什么意思 a:rect_id是矩形的ID
-            if rect_id:
-                canvas.delete(rect_id)#canvas.delete()方法用于删除画布上的图形。
-            rect_id = canvas.create_rectangle(#canvas.create_rectangle()方法用于在画布上绘制矩形。
-                start_x, start_y, event.x, event.y,
-                outline='red', width=1
+            def mousePressEvent(self, event):
+                self.start_point = event.pos()
+                self.end_point = event.pos()
+                self.update()
+
+            def mouseMoveEvent(self, event):
+                self.end_point = event.pos()
+                self.update()
+
+            def mouseReleaseEvent(self, event):
+                # 获取最终选区
+                self.end_point = event.pos()
+                selection = QRect(self.start_point, self.end_point).normalized()
+
+                # 确保选区有效
+                if selection.width() < 5 or selection.height() < 5:
+                    self.cropped_image = None
+                else:
+                    self.cropped_image = self.image.copy(selection)
+                self.close()
+
+            def keyPressEvent(self, event):
+                if event.key() == Qt.Key_Escape:
+                    self.cropped_image = None
+                    self.close()
+
+        # 显示选择窗口
+        selector = ScreenshotSelector(full_image)
+        selector.show()
+        app.exec_()  # 进入事件循环
+
+        # 处理截图结果
+        if selector.cropped_image and not selector.cropped_image.isNull():
+            # 创建临时文件
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix=".png",
+                delete=False,
+                dir='temp',
+                mode='wb'  # 添加二进制写模式
             )
+            temp_file.close()  # 关闭文件以便后续写入
 
-        def on_mouse_up(event):
-            """
-            处理鼠标释放事件。
+            # 保存裁剪后的图片
+            selector.cropped_image.save(temp_file.name)
 
-            记录鼠标释放的位置，关闭截屏窗口，并调用保存截取区域的方法。
-            """
-            nonlocal end_x, end_y
-            end_x, end_y = event.x, event.y
-            screen_win.destroy()
-            self.root.deiconify()
-            self.save_captured_area(
-                (min(start_x, end_x), min(start_y, end_y)),
-                (max(start_x, end_x), max(start_y, end_y))
-            )
+            # 更新数据
+            pron = self.current_data["pronunciations"][self.current_pronunciation_index]
+            pron["imported_source_path"] = temp_file.name
+            self.update_thumbnail_panel()
 
-        # 创建并配置画布
-        canvas = tk.Canvas(screen_win, cursor="crosshair")
-        canvas.pack(fill=tk.BOTH, expand=True)
+            # 显示提示
+            QMessageBox.information(None, "截图成功", f"截图已保存到：{temp_file.name}")
+        else:
+            QMessageBox.warning(None, "操作取消", "未选择有效区域")
 
-        # 绑定鼠标事件
-        canvas.bind("<ButtonPress-1>", on_mouse_down)
-        canvas.bind("<B1-Motion>", on_mouse_move)
-        canvas.bind("<ButtonRelease-1>", on_mouse_up)
+        # 清理资源
+        app.quit()
 
     def save_captured_area(self, start_point, end_point):
 
