@@ -9,9 +9,6 @@ from datetime import datetime
 import re
 import tempfile
 import time
-from PyQt5.QtWidgets import QApplication, QWidget, QMessageBox
-from PyQt5.QtGui import QPainter, QImage, QPen, QColor
-from PyQt5.QtCore import Qt, QPoint, QRect, QRect
 import sys
 
 
@@ -71,7 +68,7 @@ class ImageViewerApp:
 
     def show_empty_message(self):
         self.img_canvas.delete("all")
-        self.img_canvas.create_text(250, 250, text="没有找到任何图片", fill="red")
+        self.img_canvas.create_text(250, 250, text="找不到图片,请在目录中创建image文件夹", fill="red")
         self.title_label.config(text="错误状态")
 
     def create_widgets(self):
