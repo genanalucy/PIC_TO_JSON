@@ -183,105 +183,92 @@ class ImageViewerApp:
                     print(f"缩略图加载失败: {str(e)}")
 
     def capture_screen(self):
-        # 创建QApplication实例
-        app = QApplication(sys.argv)
+        try:
+            # 阶段1：截取全屏 -------------------------------------------------
+            self.root.withdraw()  # 隐藏主窗口
+            screenshot = ImageGrab.grab()  # 截取全屏
+            self.root.deiconify()  # 恢复主窗口
 
-        # 截取全屏
-        screen = app.primaryScreen()
-        screenshot = screen.grabWindow(QApplication.desktop().winId())
-        full_image = screenshot.toImage()
+            # 创建临时文件保存全屏截图
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False, dir='temp') as fullscreen_temp:
+                screenshot.save(fullscreen_temp.name, "PNG")
 
-        # 创建区域选择窗口
-        class ScreenshotSelector(QWidget):
-            def __init__(self, image):
-                super().__init__()
-                self.image = image
-                self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
-                self.setAttribute(Qt.WA_TranslucentBackground)
-                self.setCursor(Qt.CrossCursor)
-                self.start_point = QPoint()
-                self.end_point = QPoint()
-                self.cropped_image = None
+            # 阶段2：在全屏截图上选区 -------------------------------------------
+            selector_window = tk.Toplevel(self.root)
+            selector_window.attributes('-fullscreen', True)
+            selector_window.configure(cursor="crosshair")
 
-                # 适配多显示器：根据截图尺寸设置窗口大小
-                self.setGeometry(QRect(QPoint(0, 0), image.size()))
+            # 加载全屏截图并适应窗口
+            img = Image.open(fullscreen_temp.name)
+            img_width, img_height = img.size
+            screen_width = selector_window.winfo_screenwidth()
+            screen_height = selector_window.winfo_screenheight()
 
-            def paintEvent(self, event):
-                painter = QPainter(self)
-                # 绘制全屏截图背景
-                painter.drawImage(self.rect(), self.image)
+            # 计算缩放比例
+            scale = min(screen_width / img_width, screen_height / img_height)
+            scaled_img = img.resize((int(img_width * scale), int(img_height * scale)), Image.LANCZOS)
+            photo = ImageTk.PhotoImage(scaled_img)
 
-                # 绘制半透明蒙版
-                painter.setBrush(QColor(0, 0, 0, 100))
-                painter.drawRect(self.rect())
+            # 创建画布显示缩放后的图片
+            canvas = tk.Canvas(selector_window, cursor="crosshair")
+            canvas.create_image(0, 0, anchor=tk.NW, image=photo)
+            canvas.pack(fill=tk.BOTH, expand=True)
 
-                # 绘制选中区域
-                if not self.start_point.isNull() and not self.end_point.isNull():
-                    selection = QRect(self.start_point, self.end_point).normalized()
-                    # 显示原始内容
-                    painter.drawImage(selection, self.image, selection)
-                    # 绘制红色边框
-                    painter.setPen(QPen(Qt.red, 2))
-                    painter.drawRect(selection)
+            # 初始化选区变量
+            rect_id = None
+            start_x = start_y = end_x = end_y = 0
+            scale_factor = img_width / scaled_img.width  # 实际像素缩放系数
 
-            def mousePressEvent(self, event):
-                self.start_point = event.pos()
-                self.end_point = event.pos()
-                self.update()
+            # 鼠标事件处理
+            def on_press(event):
+                nonlocal start_x, start_y, rect_id
+                start_x, start_y = event.x, event.y
+                rect_id = canvas.create_rectangle(start_x, start_y, start_x, start_y, outline='red', width=2)
 
-            def mouseMoveEvent(self, event):
-                self.end_point = event.pos()
-                self.update()
+            def on_drag(event):
+                nonlocal end_x, end_y
+                end_x, end_y = event.x, event.y
+                canvas.coords(rect_id, start_x, start_y, end_x, end_y)
 
-            def mouseReleaseEvent(self, event):
-                # 获取最终选区
-                self.end_point = event.pos()
-                selection = QRect(self.start_point, self.end_point).normalized()
+            def on_release(event):
+                # 转换坐标到原始尺寸
+                raw_left = int(min(start_x, end_x) * scale_factor)
+                raw_top = int(min(start_y, end_y) * scale_factor)
+                raw_right = int(max(start_x, end_x) * scale_factor)
+                raw_bottom = int(max(start_y, end_y) * scale_factor)
 
-                # 确保选区有效
-                if selection.width() < 5 or selection.height() < 5:
-                    self.cropped_image = None
-                else:
-                    self.cropped_image = self.image.copy(selection)
-                self.close()
+                # 裁剪原始图片
+                cropped = img.crop((raw_left, raw_top, raw_right, raw_bottom))
 
-            def keyPressEvent(self, event):
-                if event.key() == Qt.Key_Escape:
-                    self.cropped_image = None
-                    self.close()
+                # 保存最终截图
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False, dir='temp') as final_temp:
+                    cropped.save(final_temp.name)
+                    pron = self.current_data["pronunciations"][self.current_pronunciation_index]
+                    pron["imported_source_path"] = final_temp.name
+                    self.update_thumbnail_panel()
+                    messagebox.showinfo("成功", f"已保存选区截图至: {final_temp.name}")
 
-        # 显示选择窗口
-        selector = ScreenshotSelector(full_image)
-        selector.show()
-        app.exec_()  # 进入事件循环
+                selector_window.destroy()
 
-        # 处理截图结果
-        if selector.cropped_image and not selector.cropped_image.isNull():
-            # 创建临时文件
-            os.makedirs('temp', exist_ok=True)
-            temp_file = tempfile.NamedTemporaryFile(
-                suffix=".png",
-                delete=False,
-                dir='temp',
-                mode='wb'  # 添加二进制写模式
-            )
-            temp_file.close()  # 关闭文件以便后续写入
+            # 绑定事件
+            canvas.bind("<ButtonPress-1>", on_press)
+            canvas.bind("<B1-Motion>", on_drag)
+            canvas.bind("<ButtonRelease-1>", on_release)
+            selector_window.bind("<Escape>", lambda e: selector_window.destroy())
 
-            # 保存裁剪后的图片
-            selector.cropped_image.save(temp_file.name)
+            # 维持图片引用
+            canvas.image = photo
+            selector_window.wait_window()
 
-            # 更新数据
-            pron = self.current_data["pronunciations"][self.current_pronunciation_index]
-            pron["imported_source_path"] = temp_file.name
-            self.update_thumbnail_panel()
-
-            # 显示提示
-            QMessageBox.information(None, "截图成功", f"截图已保存到：{temp_file.name}")
-        else:
-            QMessageBox.warning(None, "操作取消", "未选择有效区域")
-
-        # 清理资源
-        app.quit()
+        except Exception as e:
+            messagebox.showerror("错误", f"截图失败: {str(e)}")
+        finally:
+            self.root.deiconify()
+            if 'fullscreen_temp' in locals():
+                try:
+                    os.remove(fullscreen_temp.name)
+                except:
+                    pass
 
     def save_captured_area(self, start_point, end_point):
 
