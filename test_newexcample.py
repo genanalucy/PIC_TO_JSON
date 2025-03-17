@@ -17,6 +17,7 @@ import sys
 class ImageViewerApp:
     def __init__(self, root):
         self.root = root
+        self.root.geometry("600x1400")
         self.root.title("字典json生成")
 
         # 初始化数据结构
@@ -75,6 +76,7 @@ class ImageViewerApp:
     def create_widgets(self):
         self.main_frame = tk.Frame(self.root)
         self.main_frame.pack(padx=20, pady=20, fill=tk.BOTH, expand=True)
+        #怎么调整主窗口大小 a:pack()函数是tkinter中的一个函数，用于在窗口中放置组件。它用于在窗口中放置组件，并设置组件的位置、大小、边框、背景色等属性。
 
         # 左侧图片区域
         self.create_image_panel()
@@ -161,7 +163,7 @@ class ImageViewerApp:
                 print(f"临时缩略图加载失败: {str(e)}")
 
         # 显示已提交的图片（只显示最新一张）
-        input_dir = "input_image"
+        input_dir = "output_image"
         if pron.get("imported_image"):
             latest_image = pron["imported_image"][-1]
             img_path = os.path.join(input_dir, latest_image)
@@ -620,7 +622,7 @@ class ImageViewerApp:
                 old_source_path = pron.get("imported_source_path", "")
 
                 # 创建输入目录
-                input_dir = "input_image"
+                input_dir = "output_image"
                 os.makedirs(input_dir, exist_ok=True)
 
                 # 生成时间戳（每个文件独立）
@@ -648,7 +650,7 @@ class ImageViewerApp:
                 pron["imported_source_path"] = dest_path
                 pron["imported_image"] = [new_filename]
 
-                # 删除旧文件（仅在input_image目录中的文件）
+                # 删除旧文件（仅在output_image目录中的文件）
                 # 1. 删除历史记录文件
                 for old_file in old_imported_images:
                     old_path = os.path.join(input_dir, old_file)
@@ -704,15 +706,29 @@ class ImageViewerApp:
         """
         if messagebox.askyesno("确认", "确定要删除当前读音及其所有词性信息吗？"):
             original_index = self.current_pronunciation_index
+            pron = self.current_data["pronunciations"][self.current_pronunciation_index]
             self.save_current_form()
+
+            input_dir="output_image"
+            old_path=pron.get("imported_source_path","")
+            if os.path.exists(old_path):
+                os.remove(old_path)
+                print(f"已删除历史文件: {old_path}")
             del self.current_data["pronunciations"][original_index]    #del是什么意思 a:del是delete的缩写，意思是删除
 
             if not self.current_data["pronunciations"]:
                 self.current_data["pronunciations"].append({
-                    "zhuang_spelling": "",
-                    "ipa": "",
-                    "entries": [{"part_of_speech": "", "meaning": "", "examples": [{"壮文": "", "中文": ""}]}]
-                })
+            "zhuang_spelling": "",
+            "ipa": "",
+            "imported_source_path": "",  # 新增
+            "imported_image": [],  # 新增
+            "dialect_type": 0,
+            "entries": [{
+                "part_of_speech": "",
+                "meaning": "",
+                "examples": [{"壮文": "", "中文": ""}]
+            }]
+        })
 
             self.current_pronunciation_index = min(original_index, len(self.current_data["pronunciations"]) - 1)
             self.current_entry_index = 0 #为什么要置0 a:因为删除了当前读音，所以要重新从0开始q:从1开始会怎么样 a:会报错，因为删除了当前读音，所以当前读音的索引就是0
@@ -850,7 +866,7 @@ class ImageViewerApp:
         if not pron.get("imported_image"):
             return
 
-        input_dir = "input_image"
+        input_dir = "output_image"
         for old_file in pron["imported_image"]:
             old_path = os.path.join(input_dir, old_file)
             try:
