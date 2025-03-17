@@ -8,6 +8,7 @@ import shutil
 from datetime import datetime
 import re
 import tempfile
+import time
 from PyQt5.QtWidgets import QApplication, QWidget, QMessageBox
 from PyQt5.QtGui import QPainter, QImage, QPen, QColor
 from PyQt5.QtCore import Qt, QPoint, QRect, QRect
@@ -184,73 +185,108 @@ class ImageViewerApp:
 
     def capture_screen(self):
         try:
+            # 确保临时目录存在
+            self.temp_dir = os.path.abspath("temp")
+            os.makedirs(self.temp_dir, exist_ok=True)
+
             # 阶段1：截取全屏 -------------------------------------------------
             self.root.withdraw()  # 隐藏主窗口
-            screenshot = ImageGrab.grab()  # 截取全屏
-            self.root.deiconify()  # 恢复主窗口
+            time.sleep(0.3)  # 等待窗口完全隐藏
 
-            # 创建临时文件保存全屏截图
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False, dir='temp') as fullscreen_temp:
-                screenshot.save(fullscreen_temp.name, "PNG")
+
+            # 生成唯一文件名
+            os.makedirs('temp', exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            fullscreen_temp_path = os.path.join(self.temp_dir, f"fullscreen_{timestamp}.png")
+
+            # 截取并保存全屏
+            screenshot = ImageGrab.grab()
+            screenshot.save(fullscreen_temp_path, "PNG")
 
             # 阶段2：在全屏截图上选区 -------------------------------------------
             selector_window = tk.Toplevel(self.root)
             selector_window.attributes('-fullscreen', True)
+            selector_window.attributes('-topmost', True)
             selector_window.configure(cursor="crosshair")
 
-            # 加载全屏截图并适应窗口
-            img = Image.open(fullscreen_temp.name)
+            # 加载并显示全屏截图
+            img = Image.open(fullscreen_temp_path)
             img_width, img_height = img.size
+
+            # 计算适合屏幕的缩放比例
             screen_width = selector_window.winfo_screenwidth()
             screen_height = selector_window.winfo_screenheight()
-
-            # 计算缩放比例
             scale = min(screen_width / img_width, screen_height / img_height)
-            scaled_img = img.resize((int(img_width * scale), int(img_height * scale)), Image.LANCZOS)
+
+            # 高质量缩放
+            scaled_width = int(img_width * scale)
+            scaled_height = int(img_height * scale)
+            scaled_img = img.resize((scaled_width, scaled_height), Image.LANCZOS)
             photo = ImageTk.PhotoImage(scaled_img)
 
-            # 创建画布显示缩放后的图片
-            canvas = tk.Canvas(selector_window, cursor="crosshair")
+            # 创建画布
+            canvas = tk.Canvas(selector_window, highlightthickness=0)
             canvas.create_image(0, 0, anchor=tk.NW, image=photo)
             canvas.pack(fill=tk.BOTH, expand=True)
 
-            # 初始化选区变量
+            # 初始化变量
             rect_id = None
             start_x = start_y = end_x = end_y = 0
-            scale_factor = img_width / scaled_img.width  # 实际像素缩放系数
+            scale_factor = img_width / scaled_width  # 实际像素与显示像素的比例
 
             # 鼠标事件处理
             def on_press(event):
                 nonlocal start_x, start_y, rect_id
                 start_x, start_y = event.x, event.y
-                rect_id = canvas.create_rectangle(start_x, start_y, start_x, start_y, outline='red', width=2)
+                rect_id = canvas.create_rectangle(
+                    start_x, start_y, start_x, start_y,
+                    outline='red', width=2, tags="selection"
+                )
 
             def on_drag(event):
                 nonlocal end_x, end_y
                 end_x, end_y = event.x, event.y
                 canvas.coords(rect_id, start_x, start_y, end_x, end_y)
 
+
             def on_release(event):
-                # 转换坐标到原始尺寸
+                # 计算原始坐标
                 raw_left = int(min(start_x, end_x) * scale_factor)
                 raw_top = int(min(start_y, end_y) * scale_factor)
                 raw_right = int(max(start_x, end_x) * scale_factor)
                 raw_bottom = int(max(start_y, end_y) * scale_factor)
 
-                # 裁剪原始图片
-                cropped = img.crop((raw_left, raw_top, raw_right, raw_bottom))
+                # 验证选区有效性
+                if (raw_right - raw_left < 10) or (raw_bottom - raw_top < 10):
+                    messagebox.showwarning("无效选区", "选区尺寸过小")
+                    selector_window.destroy()
+                    return
 
                 # 保存最终截图
-                with tempfile.NamedTemporaryFile(suffix=".png", delete=False, dir='temp') as final_temp:
-                    cropped.save(final_temp.name)
+                try:
+                    cropped = img.crop((raw_left, raw_top, raw_right, raw_bottom))
+                    final_filename = f"cropped_{timestamp}.png"
+                    final_path = os.path.join(self.temp_dir, final_filename)
+                    cropped.save(final_path)
+
+                    # 更新数据
                     pron = self.current_data["pronunciations"][self.current_pronunciation_index]
-                    pron["imported_source_path"] = final_temp.name
+                    pron["imported_source_path"] = final_path
                     self.update_thumbnail_panel()
-                    messagebox.showinfo("成功", f"已保存选区截图至: {final_temp.name}")
 
-                selector_window.destroy()
+                    # 显示相对路径
+                    rel_path = os.path.relpath(final_path, start=os.getcwd())
+                    messagebox.showinfo("截图成功", f"截图已保存到：\n{rel_path}")
+                except Exception as save_error:
+                    messagebox.showerror("保存失败", f"无法保存文件：{str(save_error)}")
+                finally:
+                    selector_window.destroy()
+                    try:
+                        os.remove(fullscreen_temp_path)  # 清理全屏临时文件
+                    except Exception as clean_error:
+                        print(f"清理临时文件失败：{str(clean_error)}")
 
-            # 绑定事件
+            # 事件绑定
             canvas.bind("<ButtonPress-1>", on_press)
             canvas.bind("<B1-Motion>", on_drag)
             canvas.bind("<ButtonRelease-1>", on_release)
@@ -260,15 +296,16 @@ class ImageViewerApp:
             canvas.image = photo
             selector_window.wait_window()
 
-        except Exception as e:
-            messagebox.showerror("错误", f"截图失败: {str(e)}")
+        except Exception as main_error:
+            messagebox.showerror("严重错误", f"截图过程失败：{str(main_error)}")
         finally:
             self.root.deiconify()
-            if 'fullscreen_temp' in locals():
+            if 'fullscreen_temp_path' in locals():
                 try:
-                    os.remove(fullscreen_temp.name)
-                except:
-                    pass
+                    if os.path.exists(fullscreen_temp_path):
+                        os.remove(fullscreen_temp_path)
+                except Exception as e:
+                    print(f"最终清理失败：{str(e)}")
 
     def save_captured_area(self, start_point, end_point):
 
