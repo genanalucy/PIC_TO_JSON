@@ -261,7 +261,7 @@ class ImageViewerApp:
                     messagebox.showwarning("无效选区", "选区尺寸过小")
                     selector_window.destroy()
                     return
-
+                selector_window.withdraw()
                 # 保存最终截图
                 try:
                     cropped = img.crop((raw_left, raw_top, raw_right, raw_bottom))
