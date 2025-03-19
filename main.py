@@ -20,7 +20,7 @@ class ImageViewerApp:
     def __init__(self, root):
         self.root = root
         self.root.geometry("600x1400")
-        self.root.title("字典json生成0329v2.0.2")
+        self.root.title("字典json生成0319v2.0.2")
 
         # 初始化数据结构
         self.current_data = {
