@@ -11,12 +11,16 @@ import tempfile
 import time
 import sys
 
-
+"""
+0319
+1.修复 outoflist
+2.修复方言按钮全选问题
+"""
 class ImageViewerApp:
     def __init__(self, root):
         self.root = root
         self.root.geometry("600x1400")
-        self.root.title("字典json生成")
+        self.root.title("字典json生成0329v2.0.2")
 
         # 初始化数据结构
         self.current_data = {
@@ -523,6 +527,10 @@ class ImageViewerApp:
             self.word_num_entry.delete(0, tk.END)
             self.word_num_entry.insert(0, self.current_data["page_info"].get("word_num", ""))
 
+            # 重置导航索引
+            self.current_pronunciation_index = 0
+            self.current_entry_index = 0
+            self.current_example_index = 0
             # 加载主图片
             img = Image.open(image_path)#image.open()方法用于打开一个图片
             img.thumbnail((1000, 1000))#thumbnail()方法用于将图像调整为给定的尺寸。
@@ -537,10 +545,7 @@ class ImageViewerApp:
             # 更新缩略图
             self.update_thumbnail_panel()
 
-            # 重置导航索引
-            self.current_pronunciation_index = 0
-            self.current_entry_index = 0
-            self.current_example_index = 0
+
             self.update_form()
         except Exception as e:
             self.img_canvas.delete("all")
@@ -558,7 +563,7 @@ class ImageViewerApp:
         self.ipa_entry.delete(0, tk.END)
         self.ipa_entry.insert(0, pron.get("ipa", ""))
         dialect_type = pron.get("dialect_type", 0)
-
+        self.dialect_var.set(dialect_type)
         entry = pron["entries"][self.current_entry_index]
         self.pos_entries["part_of_speech"].delete(0, tk.END)
         self.pos_entries["part_of_speech"].insert(0, entry.get("part_of_speech", ""))
