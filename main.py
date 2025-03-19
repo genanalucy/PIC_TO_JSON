@@ -12,15 +12,16 @@ import time
 import sys
 
 """
-0319
+0319(2)
 1.修复 outoflist
 2.修复方言按钮全选问题
+3.标注作者逻辑更新
 """
 class ImageViewerApp:
     def __init__(self, root):
         self.root = root
         self.root.geometry("600x1400")
-        self.root.title("字典json生成0319v2.0.2")
+        self.root.title("字典json生成0319v2.0.3")
 
         # 初始化数据结构
         self.current_data = {
@@ -511,8 +512,8 @@ class ImageViewerApp:
                         self.current_data = data[0]
                         if not self.current_data["pronunciations"]:
                             self.current_data["pronunciations"] = new_data_template["pronunciations"].copy()
-                        self.current_data["annotator"] = new_data_template["annotator"]
-                        self.current_data["page_info"] = new_data_template["page_info"]
+                        self.current_data["annotator"] = data[0] ["annotator"]
+                        self.current_data["page_info"] = data[0] ["page_info"]
 
             else:
                 self.current_data = new_data_template
