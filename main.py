@@ -75,7 +75,7 @@ class ImageViewerApp:
         else:
             self.show_empty_message()
 
-    @staticmethod
+    @staticmethod#静态方法 a:静态方法（static method）是Python中的一个特殊类型方法，它与普通方法不同，它没有self参数，而是直接使用类名调用。静态方法通常用于定义一些与类相关的函数，而不依赖于类的实例。
     def sort_key(file_path):
         filename = os.path.basename(file_path)
         main_name = os.path.splitext(filename)[0]
