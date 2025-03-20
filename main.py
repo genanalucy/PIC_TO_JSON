@@ -16,6 +16,9 @@ import sys
 1.修复 outoflist
 2.修复方言按钮全选问题
 3.标注作者逻辑更新
+0320
+1.修改截图保存逻辑,目前支持同音截图
+2.文件排序逻辑更新,现在会先根据页数排序,页数相同再根据字数排序
 """
 class ImageViewerApp:
     def __init__(self, root):
@@ -43,8 +46,9 @@ class ImageViewerApp:
         output_dir = "output"
         image_extensions = ["*.png", "*.jpg", "*.jpeg"]
         self.image_files = sorted(
-            [f for ext in image_extensions for f in glob.glob(os.path.join(image_dir, ext))]
-        )
+            [f for ext in image_extensions for f in glob.glob(os.path.join(image_dir, ext))],
+            key=self.sort_key  # 正确引用静态方法
+        )#默认是按照什么排序的 a:默认是按照文件名排序的
 
         # 加载配置文件
         config_path = "config.json"
@@ -71,6 +75,14 @@ class ImageViewerApp:
         else:
             self.show_empty_message()
 
+    @staticmethod
+    def sort_key(file_path):
+        filename = os.path.basename(file_path)
+        main_name = os.path.splitext(filename)[0]
+        parts = main_name.split('_')
+        num1 = int(parts[1])
+        num2 = int(parts[3])
+        return (num1, num2)
     def show_empty_message(self):
         self.img_canvas.delete("all")
         self.img_canvas.create_text(250, 250, text="找不到图片,请在目录中创建image文件夹", fill="red")
@@ -495,8 +507,9 @@ class ImageViewerApp:
                 "pronunciations": [{
                     "zhuang_spelling": "",
                     "ipa": "",
-                    "imported_source_path": "",  # 新增
-                    "imported_image": [],  # 新增
+                    "imported_source_path": "",
+                    "imported_image": [],
+                    "old_image_path": "",
                     "entries": [{
                         "part_of_speech": "",
                         "meaning": "",
@@ -638,22 +651,25 @@ class ImageViewerApp:
         # 获取已导入的图片列表
         imported_images = []
         # 获取导入的源文件路径
+
         for pron in self.current_data["pronunciations"]:
             temp_source = pron.get("imported_source_path", "")
-            if not temp_source:
+            old_source_path = pron.get("old_image_path", "")
+            # 生成时间戳（每个文件独立）
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")#怎么生成毫秒级时间戳 a:datetime.now()返回当前日期和时间。strftime()方法用于将日期时间对象转换为字符串。
+            if  temp_source == old_source_path:
                 continue  # 没有需要处理的文件
 
             try:
                 # 保存旧文件信息
-                old_imported_images = pron.get("imported_image", [])
-                old_source_path = pron.get("imported_source_path", "")
+                #old_imported_images = pron.get("imported_image", [])
+
 
                 # 创建输入目录
                 input_dir = "output_image"
                 os.makedirs(input_dir, exist_ok=True)
 
-                # 生成时间戳（每个文件独立）
-                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
 
                 # 获取读音名称并清理非法字符
                 pron_name = pron.get("zhuang_spelling", "unnamed")
@@ -667,23 +683,29 @@ class ImageViewerApp:
                 new_filename = f"{pron_name_clean}_{timestamp}{ext}"
                 dest_path = os.path.join(input_dir, new_filename)
 
-                # 移动或复制文件
+                #移动临时文件
+                shutil.move(temp_source, dest_path)
+                """# 移动或复制文件
                 if temp_source.startswith(tempfile.gettempdir()):
                     shutil.move(temp_source, dest_path)
                 else:
-                    shutil.copyfile(temp_source, dest_path)
+                    shutil.copyfile(temp_source, dest_path)"""
 
                 # 更新数据
                 pron["imported_source_path"] = dest_path
+                pron["old_image_path"] = dest_path
                 pron["imported_image"] = [new_filename]
 
-                # 删除旧文件（仅在output_image目录中的文件）
+                if os.path.exists(old_source_path):
+                    os.remove(old_source_path)
+                    print(f"已删除历史文件: {old_source_path}")
+                """# 删除旧文件（仅在output_image目录中的文件）
                 # 1. 删除历史记录文件
                 for old_file in old_imported_images:
                     old_path = os.path.join(input_dir, old_file)
                     if os.path.exists(old_path) and old_path != dest_path:
                         os.remove(old_path)
-                        print(f"已删除历史文件: {old_path}")
+                        print(f"已删除历史文件: {old_path}")"""
 
                 # 2. 删除旧的source文件（如果与新文件不同且在input目录）
                 if (old_source_path.startswith(input_dir)
@@ -788,6 +810,7 @@ class ImageViewerApp:
             "zhuang_spelling": "",
             "ipa": "",
             "imported_source_path": "",  # 新增
+            "old_image_path": "",  # 新增
             "imported_image": [],  # 新增
             "dialect_type": 0,
             "entries": [{
