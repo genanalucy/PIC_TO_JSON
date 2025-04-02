@@ -19,6 +19,8 @@ import sys
 0320
 1.修改截图保存逻辑,目前支持同音截图
 2.文件排序逻辑更新,现在会先根据页数排序,页数相同再根据字数排序
+0401
+1.在submit方法中增加了捕获异常功能
 """
 class ImageViewerApp:
     def __init__(self, root):
@@ -47,35 +49,34 @@ class ImageViewerApp:
         image_extensions = ["*.png", "*.jpg", "*.jpeg"]
         self.image_files = sorted(
             [f for ext in image_extensions for f in glob.glob(os.path.join(image_dir, ext))],
-            key=self.sort_key  # 正确引用静态方法
-        )#默认是按照什么排序的 a:默认是按照文件名排序的
+            key=self.sort_key
+        )
 
         # 加载配置文件
         config_path = "config.json"
         self.current_image_index = 0
-        self.current_pronunciation_index = 0  # 当前读音索引
-        self.current_entry_index = 0  # 当前词性条目索引
+        self.current_pronunciation_index = 0
+        self.current_entry_index = 0
         self.current_example_index = 0
         if os.path.exists(config_path):
             try:
                 with open(config_path, "r") as f:
                     config = json.load(f)
-                    last_index = config.get("last_index", 0)#get（）使用方法，如果键不存在，返回默认值
+                    last_index = config.get("last_index", 0)
                     if 0 <= last_index < len(self.image_files):
                         self.current_image_index = last_index
             except:
                 pass
 
-        # 创建界面
+
         self.create_widgets()
 
-        # 加载当前图片
         if self.image_files:
             self.load_current_image()
         else:
             self.show_empty_message()
 
-    @staticmethod#静态方法 a:静态方法（static method）是Python中的一个特殊类型方法，它与普通方法不同，它没有self参数，而是直接使用类名调用。静态方法通常用于定义一些与类相关的函数，而不依赖于类的实例。
+    @staticmethod
     def sort_key(file_path):
         filename = os.path.basename(file_path)
         main_name = os.path.splitext(filename)[0]
@@ -91,8 +92,6 @@ class ImageViewerApp:
     def create_widgets(self):
         self.main_frame = tk.Frame(self.root)
         self.main_frame.pack(padx=20, pady=20, fill=tk.BOTH, expand=True)
-        #怎么调整主窗口大小 a:pack()函数是tkinter中的一个函数，用于在窗口中放置组件。它用于在窗口中放置组件，并设置组件的位置、大小、边框、背景色等属性。
-
         # 左侧图片区域
         self.create_image_panel()
         # 右侧表单区域
@@ -643,99 +642,72 @@ class ImageViewerApp:
         提交数据函数，负责保存当前表单数据，清理旧图片，并将新图片移动到指定目录，
         更新数据记录，并将当前数据保存为JSON格式文件。
         """
-        # 保存当前表单数据
-        self.save_current_form()
-        # 清理旧图片
-        #self.cleanup_old_images()
-        #self.current_data["imported_image"] = []  # 清空历史记录
-        # 获取已导入的图片列表
-        imported_images = []
-        # 获取导入的源文件路径
+        try:
+            # 保存当前表单数据
+            self.save_current_form()
+            # 获取已导入的图片列表
+            imported_images = []
 
-        for pron in self.current_data["pronunciations"]:
-            temp_source = pron.get("imported_source_path", "")
-            old_source_path = pron.get("old_image_path", "")
-            # 生成时间戳（每个文件独立）
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")#怎么生成毫秒级时间戳 a:datetime.now()返回当前日期和时间。strftime()方法用于将日期时间对象转换为字符串。
-            if  temp_source == old_source_path:
-                continue  # 没有需要处理的文件
+            for pron in self.current_data["pronunciations"]:
+                temp_source = pron.get("imported_source_path", "")
+                old_source_path = pron.get("old_image_path", "")
+                # 生成时间戳（每个文件独立）
+                timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+                if temp_source == old_source_path:
+                    continue  # 没有需要处理的文件
 
-            try:
-                # 保存旧文件信息
-                #old_imported_images = pron.get("imported_image", [])
+                try:
+                    # 创建输入目录
+                    input_dir = "output_image"
+                    os.makedirs(input_dir, exist_ok=True)
 
+                    # 获取读音名称并清理非法字符
+                    pron_name = pron.get("zhuang_spelling", "unnamed")
+                    pron_name_clean = re.sub(r'[\\/*?:"<>|]', "", pron_name)
 
-                # 创建输入目录
-                input_dir = "output_image"
-                os.makedirs(input_dir, exist_ok=True)
+                    # 处理文件扩展名
+                    _, ext = os.path.splitext(temp_source)
+                    ext = ext if ext else ".jpg"
 
+                    # 生成新文件名和路径
+                    new_filename = f"{pron_name_clean}_{timestamp}{ext}"
+                    dest_path = os.path.join(input_dir, new_filename)
 
-
-                # 获取读音名称并清理非法字符
-                pron_name = pron.get("zhuang_spelling", "unnamed")
-                pron_name_clean = re.sub(r'[\\/*?:"<>|]', "", pron_name)
-
-                # 处理文件扩展名
-                _, ext = os.path.splitext(temp_source)
-                ext = ext if ext else ".jpg"
-
-                # 生成新文件名和路径
-                new_filename = f"{pron_name_clean}_{timestamp}{ext}"
-                dest_path = os.path.join(input_dir, new_filename)
-
-                #移动临时文件
-                shutil.move(temp_source, dest_path)
-                """# 移动或复制文件
-                if temp_source.startswith(tempfile.gettempdir()):
+                    # 移动临时文件
                     shutil.move(temp_source, dest_path)
-                else:
-                    shutil.copyfile(temp_source, dest_path)"""
 
-                # 更新数据
-                pron["imported_source_path"] = dest_path
-                pron["old_image_path"] = dest_path
-                pron["imported_image"] = [new_filename]
+                    # 更新数据
+                    pron["imported_source_path"] = dest_path
+                    pron["old_image_path"] = dest_path
+                    pron["imported_image"] = [new_filename]
 
-                if os.path.exists(old_source_path):
-                    os.remove(old_source_path)
-                    print(f"已删除历史文件: {old_source_path}")
-                """# 删除旧文件（仅在output_image目录中的文件）
-                # 1. 删除历史记录文件
-                for old_file in old_imported_images:
-                    old_path = os.path.join(input_dir, old_file)
-                    if os.path.exists(old_path) and old_path != dest_path:
-                        os.remove(old_path)
-                        print(f"已删除历史文件: {old_path}")"""
+                    if os.path.exists(old_source_path):
+                        os.remove(old_source_path)
+                        print(f"已删除历史文件: {old_source_path}")
 
-                # 2. 删除旧的source文件（如果与新文件不同且在input目录）
-                if (old_source_path.startswith(input_dir)
-                        and old_source_path != dest_path
-                        and os.path.exists(old_source_path)):
-                    os.remove(old_source_path)
-                    print(f"已删除旧源文件: {old_source_path}")
+                except Exception as e:
+                    messagebox.showerror("错误",
+                                         f"文件处理失败: {str(e)}\n"
+                                         f"读音：{pron.get('zhuang_spelling', '未知')}\n"
+                                         f"原路径：{temp_source}"
+                                         )
+                    return
 
-            except Exception as e:
-                messagebox.showerror("错误",
-                                     f"文件处理失败: {str(e)}\n"
-                                     f"读音：{pron.get('zhuang_spelling', '未知')}\n"
-                                     f"原路径：{temp_source}"
-                                     )
-                return
+            # 确保输出目录存在
+            os.makedirs("output", exist_ok=True)
+            # 构造JSON文件名
+            filename = f"{os.path.splitext(self.current_data['image'])[0]}.json"
+            full_path = os.path.join("output", filename)
 
-        # 确保输出目录存在
-        os.makedirs("output", exist_ok=True)#os.makedirs() 方法用于递归创建目录。像 mkdir() 一样，但创建的所有中间级目录都将创建。
-        # 构造JSON文件名
-        filename = f"{os.path.splitext(self.current_data['image'])[0]}.json"
-        full_path = os.path.join("output", filename)
+            # 将当前数据保存为JSON格式文件
+            with open(full_path, 'w', encoding='utf-8') as f:
+                json.dump([self.current_data], f, ensure_ascii=False, indent=2)
 
-        # 将当前数据保存为JSON格式文件
-        with open(full_path, 'w', encoding='utf-8') as f:
-            json.dump([self.current_data], f, ensure_ascii=False, indent=2)
+            # 显示成功消息
+            messagebox.showinfo("成功", f"数据已保存到\n{full_path}")
 
-        # 显示成功消息
-        messagebox.showinfo("成功", f"数据已保存到\n{full_path}")
-        """# 显示下一张图片
-        self.show_next_image()"""
+        except Exception as e:
+            messagebox.showerror("错误", f"提交数据失败: {str(e)}")
 
     def on_close(self):
         with open("config.json", "w") as f:
