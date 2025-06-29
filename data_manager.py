@@ -97,8 +97,9 @@ class DataManager:
         entry["meaning"] = self.app.pos_entries["meaning"].get()
 
         example = entry["examples"][self.app.current_example_index]
-        example["壮文"] = self.app.pos_entries["example_zhuang"].get()
-        example["中文"] = self.app.pos_entries["example_chinese"].get()
+        # 例句用Text控件
+        example["壮文"] = self.app.pos_entries["example_zhuang"].get("1.0", "end-1c")
+        example["中文"] = self.app.pos_entries["example_chinese"].get("1.0", "end-1c")
 
     def update_form_fields(self):
         """更新表单字段显示"""
@@ -135,13 +136,13 @@ class DataManager:
         self.app.pos_entries["meaning"].delete(0, 'end')
         self.app.pos_entries["meaning"].insert(0, entry.get("meaning", ""))
 
-        # 更新例句信息
+        # 更新例句信息（Text控件）
         example = entry["examples"][self.app.current_example_index]
-        self.app.pos_entries["example_zhuang"].delete(0, 'end')
-        self.app.pos_entries["example_zhuang"].insert(0, example.get("壮文", ""))
+        self.app.pos_entries["example_zhuang"].delete("1.0", "end")
+        self.app.pos_entries["example_zhuang"].insert("1.0", example.get("壮文", ""))
         
-        self.app.pos_entries["example_chinese"].delete(0, 'end')
-        self.app.pos_entries["example_chinese"].insert(0, example.get("中文", ""))
+        self.app.pos_entries["example_chinese"].delete("1.0", "end")
+        self.app.pos_entries["example_chinese"].insert("1.0", example.get("中文", ""))
 
         # 更新页码显示
         self.app.pronunciation_page.config(
@@ -152,7 +153,6 @@ class DataManager:
             text=f"{self.app.current_example_index + 1}/{len(entry['examples'])}")
 
     def submit_data(self):
-        """提交数据函数，保存文件并处理图片"""
         # 保存当前表单数据
         self.save_current_form_data()
         
@@ -160,14 +160,14 @@ class DataManager:
         for pron in self.app.current_data["pronunciations"]:
             temp_source = pron.get("imported_source_path", "")
             old_source_path = pron.get("old_image_path", "")
-            # 生成时间戳
+            # 时间戳
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
             
             if temp_source == old_source_path:
-                continue  # 没有需要处理的文件
+                continue  
 
             try:
-                # 创建输入目录
+                # 创建输chu目录
                 input_dir = "output_image"
                 os.makedirs(input_dir, exist_ok=True)
 
@@ -175,11 +175,11 @@ class DataManager:
                 pron_name = pron.get("zhuang_spelling", "unnamed")
                 pron_name_clean = re.sub(r'[\\/*?:"<>|]', "", pron_name)
 
-                # 处理文件扩展名
+                # 文件扩展名
                 _, ext = os.path.splitext(temp_source)
                 ext = ext if ext else ".jpg"
 
-                # 生成新文件名和路径
+                # 生成路径
                 new_filename = f"{pron_name_clean}_{timestamp}{ext}"
                 dest_path = os.path.join(input_dir, new_filename)
 

@@ -18,7 +18,7 @@ class ImageViewerApp:
         self.root.geometry("600x1400")
         self.root.title("字典json生成0320v2.0.4")
 
-        # 初始化数据结构
+        # 初始化
         self.current_data = {
             "image": "",
             "annotator": "",
@@ -32,12 +32,11 @@ class ImageViewerApp:
             "pronunciations": []
         }
 
-        # 初始化模块
+
         self.image_processor = ImageProcessor(self)
         self.ui_components = UIComponents(self)
         self.data_manager = DataManager(self)
 
-        # 初始化索引
         self.current_image_index = 0
         self.current_pronunciation_index = 0
         self.current_entry_index = 0
@@ -49,7 +48,7 @@ class ImageViewerApp:
         if 0 <= last_index < len(self.image_files):
             self.current_image_index = last_index
 
-        # 创建界面
+        # 界面
         self.create_widgets()
 
         # 加载当前图片
@@ -100,19 +99,16 @@ class ImageViewerApp:
             print(f"加载图片错误: {str(e)}")
 
     def show_previous_image(self):
-        """显示上一张图片"""
         if self.current_image_index > 0:
             self.current_image_index -= 1
             self.load_current_image()
 
     def show_next_image(self):
-        """显示下一张图片"""
         if self.current_image_index < len(self.image_files) - 1:
             self.current_image_index += 1
             self.load_current_image()
 
     def jump_to_page(self):
-        """跳转到指定页面"""
         page = self.page_entry.get()
         try:
             page_num = int(page)
@@ -125,7 +121,7 @@ class ImageViewerApp:
             messagebox.showerror("错误", "请输入有效数字")
 
     def submit_data(self):
-        """提交数据"""
+
         self.data_manager.submit_data()
 
     def on_close(self):

@@ -39,7 +39,6 @@ class UIComponents:
         self.app.thumbnail_labels = []
         self.app.thumbnail_images = []
 
-        # 第一行按钮
         nav_frame1 = tk.Frame(left_frame)
         nav_frame1.pack(pady=5)
 
@@ -136,18 +135,18 @@ class UIComponents:
 
         # 标注作者标签和输入框
         tk.Label(frame, text="标注作者:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
-        self.app.annotator_entry = tk.Entry(frame, width=5)
-        self.app.annotator_entry.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        self.app.annotator_entry = tk.Entry(frame, width=30)
+        self.app.annotator_entry.grid(row=0, column=1, padx=10, pady=5, sticky="we", columnspan=2)
 
         # 页码标签、输入框和"页"字
         tk.Label(frame, text="页码-第").grid(row=1, column=0, padx=10, pady=5, sticky="e")
-        self.app.page_num_entry = tk.Entry(frame, width=5)
+        self.app.page_num_entry = tk.Entry(frame, width=15)
         self.app.page_num_entry.grid(row=1, column=1, padx=10, pady=5, sticky='w')
         tk.Label(frame, text="页").grid(row=1, column=2, padx=10, pady=5, sticky='w')
 
         # 字位置标签、输入框和"个字"字
         tk.Label(frame, text="字位置-第").grid(row=2, column=0, padx=10, pady=5, sticky="e")
-        self.app.word_num_entry = tk.Entry(frame, width=5)
+        self.app.word_num_entry = tk.Entry(frame, width=15)
         self.app.word_num_entry.grid(row=2, column=1, padx=10, pady=5, sticky="w")
         tk.Label(frame, text="个字").grid(row=2, column=2, padx=10, pady=5, sticky="w")
 
@@ -158,17 +157,17 @@ class UIComponents:
 
         row = 0
         tk.Label(frame, text="对应汉字:").grid(row=row, column=0, sticky='e', padx=5)
-        self.app.chinese_char_entry = tk.Entry(frame, width=5)
+        self.app.chinese_char_entry = tk.Entry(frame, width=10)
         self.app.chinese_char_entry.grid(row=row, column=1, pady=2)
 
         row += 1
         tk.Label(frame, text="壮文音:").grid(row=row, column=0, sticky='e', padx=5)
-        self.app.zh_wen_entry = tk.Entry(frame, width=5)
+        self.app.zh_wen_entry = tk.Entry(frame, width=20)
         self.app.zh_wen_entry.grid(row=row, column=1, pady=2)
 
         row += 1
         tk.Label(frame, text="国际音标:").grid(row=row, column=0, sticky='e', padx=5)
-        self.app.ipa_entry = tk.Entry(frame, width=5)
+        self.app.ipa_entry = tk.Entry(frame, width=20)
         self.app.ipa_entry.grid(row=row, column=1, pady=2)
 
         row += 1
@@ -191,19 +190,25 @@ class UIComponents:
         frame = tk.LabelFrame(parent, text="词性信息", font=("微软雅黑", 10), padx=10, pady=10)
         frame.pack(fill=tk.BOTH, expand=True, pady=5)
 
+        # 词性和意思仍用Entry，例句用Text
         fields = [
-            ("词性(中文):", "part_of_speech", 25),
-            ("意思:", "meaning", 25),
-            ("例句（壮文）:", "example_zhuang", 25),
-            ("例句（中文）:", "example_chinese", 25)
+            ("词性(中文):", "part_of_speech", 25, "entry"),
+            ("意思:", "meaning", 25, "entry"),
+            ("例句（壮文）:", "example_zhuang", 40, "text"),
+            ("例句（中文）:", "example_chinese", 40, "text")
         ]
 
         self.app.pos_entries = {}
-        for i, (label, field, width) in enumerate(fields):
+        for i, (label, field, width, widget_type) in enumerate(fields):
             tk.Label(frame, text=label).grid(row=i, column=0, sticky='w', padx=5, pady=2)
-            entry = tk.Entry(frame, width=width)
-            entry.grid(row=i, column=1, columnspan=3, sticky='w', pady=2)
-            self.app.pos_entries[field] = entry
+            if widget_type == "entry":
+                entry = tk.Entry(frame, width=width)
+                entry.grid(row=i, column=1, columnspan=3, sticky='w', pady=2)
+                self.app.pos_entries[field] = entry
+            else:
+                text = tk.Text(frame, width=width, height=3, wrap=tk.WORD)
+                text.grid(row=i, column=1, columnspan=3, sticky='w', pady=2)
+                self.app.pos_entries[field] = text
 
         # 词性控制按钮
         pos_ctrl_frame = tk.Frame(frame)
