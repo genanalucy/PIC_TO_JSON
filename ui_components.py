@@ -135,18 +135,18 @@ class UIComponents:
 
         # 标注作者标签和输入框
         tk.Label(frame, text="标注作者:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
-        self.app.annotator_entry = tk.Entry(frame, width=30)
+        self.app.annotator_entry = tk.Entry(frame, width=20)
         self.app.annotator_entry.grid(row=0, column=1, padx=10, pady=5, sticky="we", columnspan=2)
 
         # 页码标签、输入框和"页"字
         tk.Label(frame, text="页码-第").grid(row=1, column=0, padx=10, pady=5, sticky="e")
-        self.app.page_num_entry = tk.Entry(frame, width=15)
+        self.app.page_num_entry = tk.Entry(frame, width=20)
         self.app.page_num_entry.grid(row=1, column=1, padx=10, pady=5, sticky='w')
         tk.Label(frame, text="页").grid(row=1, column=2, padx=10, pady=5, sticky='w')
 
         # 字位置标签、输入框和"个字"字
         tk.Label(frame, text="字位置-第").grid(row=2, column=0, padx=10, pady=5, sticky="e")
-        self.app.word_num_entry = tk.Entry(frame, width=15)
+        self.app.word_num_entry = tk.Entry(frame, width=20)
         self.app.word_num_entry.grid(row=2, column=1, padx=10, pady=5, sticky="w")
         tk.Label(frame, text="个字").grid(row=2, column=2, padx=10, pady=5, sticky="w")
 
