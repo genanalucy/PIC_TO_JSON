@@ -19,6 +19,8 @@ import sys
 0320
 1.修改截图保存逻辑,目前支持同音截图
 2.文件排序逻辑更新,现在会先根据页数排序,页数相同再根据字数排序
+0630
+1.加大作者框输入长度
 """
 class ImageViewerApp:
     def __init__(self, root):
