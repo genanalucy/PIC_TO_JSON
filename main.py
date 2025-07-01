@@ -19,6 +19,8 @@ import sys
 0320
 1.修改截图保存逻辑,目前支持同音截图
 2.文件排序逻辑更新,现在会先根据页数排序,页数相同再根据字数排序
+0630
+1.加大作者框输入长度1
 """
 class ImageViewerApp:
     def __init__(self, root):
@@ -404,18 +406,18 @@ class ImageViewerApp:
 
         # 标注作者标签和输入框
         tk.Label(frame, text="标注作者:").grid(row=0, column=0, padx=10, pady=5, sticky="e")  # 右对齐，增加适当的内边距
-        self.annotator_entry = tk.Entry(frame, width=5)  # 增加宽度以适应文本输入
+        self.annotator_entry = tk.Entry(frame, width=20)  # 增加宽度以适应文本输入
         self.annotator_entry.grid(row=0, column=1, padx=10, pady=5, sticky="w")  # 左对齐，增加适当的内边距
 
         # 页码标签、输入框和“页”字
         tk.Label(frame, text="页码-第").grid(row=1, column=0, padx=10, pady=5, sticky="e")  # 右对齐
-        self.page_num_entry = tk.Entry(frame, width=5)
+        self.page_num_entry = tk.Entry(frame, width=20)
         self.page_num_entry.grid(row=1, column=1, padx=10, pady=5, sticky='w')  # 左对齐
         tk.Label(frame, text="页").grid(row=1, column=2, padx=10, pady=5, sticky='w')
 
         # 字位置标签、输入框和“个字”字
         tk.Label(frame, text="字位置-第").grid(row=2, column=0, padx=10, pady=5, sticky="e")  # 右对齐
-        self.word_num_entry = tk.Entry(frame, width=5)
+        self.word_num_entry = tk.Entry(frame, width=20)
         self.word_num_entry.grid(row=2, column=1, padx=10, pady=5, sticky="w")  # 左对齐
         tk.Label(frame, text="个字").grid(row=2, column=2, padx=10, pady=5, sticky="w")
 
