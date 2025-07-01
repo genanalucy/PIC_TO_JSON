@@ -1,0 +1,113 @@
+[
+  {
+    "image": "zhuang_118_crop_1.jpg",
+    "annotator": "b",
+    "page_info": {
+      "page_num": "1",
+      "word_num": "1"
+    },
+    "simplified_Chinese_character": "111",
+    "pronunciations": [
+      {
+        "zhuang_spelling": "111",
+        "ipa": "111",
+        "imported_source_path": "",
+        "imported_image": [],
+        "old_image_path": "",
+        "entries": [
+          {
+            "part_of_speech": "111",
+            "meaning": "111",
+            "examples": [
+              {
+                "壮文": "111",
+                "中文": "111"
+              }
+            ]
+          }
+        ],
+        "dialect_type": 0
+      },
+      {
+        "zhuang_spelling": "112",
+        "ipa": "112",
+        "imported_source_path": "",
+        "old_image_path": "",
+        "imported_image": [],
+        "dialect_type": 0,
+        "entries": [
+          {
+            "part_of_speech": "112",
+            "meaning": "112",
+            "examples": [
+              {
+                "壮文": "112",
+                "中文": "112"
+              }
+            ]
+          },
+          {
+            "part_of_speech": "122",
+            "meaning": "122",
+            "examples": [
+              {
+                "壮文": "122",
+                "中文": "122"
+              }
+            ]
+          },
+          {
+            "part_of_speech": "132",
+            "meaning": "132",
+            "examples": [
+              {
+                "壮文": "132",
+                "中文": "132"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "zhuang_spelling": "113",
+        "ipa": "113",
+        "imported_source_path": "",
+        "old_image_path": "",
+        "imported_image": [],
+        "dialect_type": 0,
+        "entries": [
+          {
+            "part_of_speech": "113",
+            "meaning": "113",
+            "examples": [
+              {
+                "壮文": "113",
+                "中文": "113"
+              }
+            ]
+          },
+          {
+            "part_of_speech": "123",
+            "meaning": "123",
+            "examples": [
+              {
+                "壮文": "123",
+                "中文": "123"
+              }
+            ]
+          },
+          {
+            "part_of_speech": "133",
+            "meaning": "133",
+            "examples": [
+              {
+                "壮文": "133",
+                "中文": "133"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,82 @@
+[
+  {
+    "image": "zhuang_117_crop_11.jpg",
+    "annotator": "",
+    "page_info": {
+      "page_num": "",
+      "word_num": ""
+    },
+    "simplified_Chinese_character": "",
+    "pronunciations": [
+      {
+        "zhuang_spelling": "1",
+        "ipa": "",
+        "imported_source_path": "output_image/1_20250320160036754858.png",
+        "imported_image": [
+          "1_20250320160036754858.png"
+        ],
+        "old_image_path": "output_image/1_20250320160036754858.png",
+        "entries": [
+          {
+            "part_of_speech": "",
+            "meaning": "",
+            "examples": [
+              {
+                "壮文": "",
+                "中文": ""
+              }
+            ]
+          }
+        ],
+        "dialect_type": 0
+      },
+      {
+        "zhuang_spelling": "2",
+        "ipa": "",
+        "imported_source_path": "output_image/2_20250320160036756716.png",
+        "old_image_path": "output_image/2_20250320160036756716.png",
+        "imported_image": [
+          "2_20250320160036756716.png"
+        ],
+        "dialect_type": 0,
+        "entries": [
+          {
+            "part_of_speech": "",
+            "meaning": "",
+            "examples": [
+              {
+                "壮文": "",
+                "中文": ""
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "zhuang_spelling": "1",
+        "ipa": "",
+        "imported_source_path": "output_image/1_20250320160259855906.png",
+        "old_image_path": "output_image/1_20250320160259855906.png",
+        "imported_image": [
+          "1_20250320160259855906.png"
+        ],
+        "dialect_type": 0,
+        "entries": [
+          {
+            "part_of_speech": "",
+            "meaning": "",
+            "examples": [
+              {
+                "壮文": "",
+                "中文": ""
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "proofread": "1",
+    "proofread_man": "b",
+    "is_wrong": "0"
+  }
+]

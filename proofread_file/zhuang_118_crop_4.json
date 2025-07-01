@@ -1,0 +1,36 @@
+[
+  {
+    "image": "zhuang_118_crop_4.jpg",
+    "annotator": "b",
+    "page_info": {
+      "page_num": "1",
+      "word_num": "1"
+    },
+    "simplified_Chinese_character": "",
+    "pronunciations": [
+      {
+        "zhuang_spelling": "",
+        "ipa": "",
+        "imported_source_path": "",
+        "imported_image": [],
+        "old_image_path": "",
+        "dialect_type": 0,
+        "entries": [
+          {
+            "part_of_speech": "",
+            "meaning": "",
+            "examples": [
+              {
+                "壮文": "",
+                "中文": ""
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "proofread": "1",
+    "proofread_man": "bb",
+    "is_wrong": "1"
+  }
+]
