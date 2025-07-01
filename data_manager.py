@@ -44,9 +44,11 @@ class DataManager:
             json.dump({"last_index": current_index}, f)
     
     def load_current_image_data(self, image_path):
-        """加载当前图片的数据"""
+        """加载当前图片的数据，优先proofread_file"""
         current_image_filename = os.path.basename(image_path)
-        json_path = os.path.join("output", os.path.splitext(current_image_filename)[0] + ".json")
+        json_name = os.path.splitext(current_image_filename)[0] + ".json"
+        proofread_json_path = os.path.join("proofread_file", json_name)
+        output_json_path = os.path.join("output", json_name)
 
         new_data_template = {
             "image": current_image_filename,
@@ -59,6 +61,7 @@ class DataManager:
                 "imported_source_path": "",
                 "imported_image": [],
                 "old_image_path": "",
+                "dialect_type": 0,
                 "entries": [{
                     "part_of_speech": "",
                     "meaning": "",
@@ -67,7 +70,14 @@ class DataManager:
             }]
         }
 
-        if os.path.exists(json_path):
+        # 优先proofread_file
+        json_path = None
+        if os.path.exists(proofread_json_path):
+            json_path = proofread_json_path
+        elif os.path.exists(output_json_path):
+            json_path = output_json_path
+
+        if json_path:
             with open(json_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 if isinstance(data, list) and len(data) > 0:
@@ -77,7 +87,6 @@ class DataManager:
                     loaded_data["annotator"] = data[0]["annotator"]
                     loaded_data["page_info"] = data[0]["page_info"]
                     return loaded_data
-
         return new_data_template
 
     def save_current_form_data(self):

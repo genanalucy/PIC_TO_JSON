@@ -101,6 +101,14 @@ class UIComponents:
         self.create_pronunciation_section(scrollable_frame)
         self.create_pos_section(scrollable_frame)
 
+        # 校对人输入框和按钮
+        proof_frame = tk.Frame(scrollable_frame)
+        proof_frame.pack(fill=tk.X, pady=10)
+        tk.Label(proof_frame, text="校对人:").pack(side=tk.LEFT, padx=5)
+        self.app.proofread_man_entry = tk.Entry(proof_frame, width=20)
+        self.app.proofread_man_entry.pack(side=tk.LEFT, padx=5)
+        tk.Button(proof_frame, text="校对", bg="#FFA500", command=self.app.proofread_action).pack(side=tk.LEFT, padx=10)
+
         # 绑定滚轮滚动事件
         self._bind_scroll_events(canvas, scrollable_frame)
 

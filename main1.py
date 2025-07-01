@@ -2,7 +2,20 @@
 主程序入口文件
 整合所有模块，提供应用程序主要逻辑
 """
+"""
+0319(2)
+1.修复 outoflist
+2.修复方言按钮全选问题
+3.标注作者逻辑更新
+0320
+1.修改截图保存逻辑,目前支持同音截图
+2.文件排序逻辑更新,现在会先根据页数排序,页数相同再根据字数排序
+0701
+1.增加校对功能：增加三个字段proofread、proofread_man、is_wrong
+2.增加作者框的显示长度
+3.例句实现多行显示
 
+"""
 import tkinter as tk
 from tkinter import messagebox
 import os
@@ -252,6 +265,60 @@ class ImageViewerApp:
                 ):
                     self.current_example_index = max(0, self.current_example_index - 1)
                     self.data_manager.update_form_fields()
+
+    def proofread_action(self):
+        """校对按钮回调"""
+        import json
+        import shutil
+        # 1. 校对人不能为空
+        proofread_man = self.proofread_man_entry.get().strip()
+        if not proofread_man:
+            messagebox.showerror("提示", "校对人名字不能为空！")
+            return
+        # 2. 保存当前表单数据
+        self.data_manager.save_current_form_data()
+        # 3. 读取output原始json
+        image_path = self.image_files[self.current_image_index]
+        json_name = os.path.splitext(os.path.basename(image_path))[0] + ".json"
+        output_json_path = os.path.join("output", json_name)
+        proofread_json_path = os.path.join("proofread_file", json_name)
+        # 4. 读取原始数据
+        if os.path.exists(output_json_path):
+            with open(output_json_path, "r", encoding="utf-8") as f:
+                try:
+                    old_data = json.load(f)
+                except Exception:
+                    old_data = []
+        else:
+            old_data = []
+        # 5. 获取当前数据副本
+        new_data = [dict(self.current_data)]
+        # 6. 增加校对字段
+        new_data[0]["proofread"] = "1"
+        new_data[0]["proofread_man"] = proofread_man
+        # 7. 判断内容是否有更改
+        import copy
+        def _remove_proof_fields(d):
+            d = copy.deepcopy(d)
+            d.pop("proofread", None)
+            d.pop("proofread_man", None)
+            d.pop("is_wrong", None)
+            return d
+        is_wrong = "0"
+        if old_data:
+            import json as _json
+            old_clean = _remove_proof_fields(old_data[0])
+            new_clean = _remove_proof_fields(new_data[0])
+            if _json.dumps(old_clean, sort_keys=True, ensure_ascii=False) != _json.dumps(new_clean, sort_keys=True, ensure_ascii=False):
+                is_wrong = "1"
+        else:
+            is_wrong = "1"
+        new_data[0]["is_wrong"] = is_wrong
+        # 8. 保存到proofread_file
+        os.makedirs("proofread_file", exist_ok=True)
+        with open(proofread_json_path, "w", encoding="utf-8") as f:
+            json.dump(new_data, f, ensure_ascii=False, indent=2)
+        messagebox.showinfo("提示", "校对完成，文件已保存到proofread_file！")
 
 
 if __name__ == "__main__":
