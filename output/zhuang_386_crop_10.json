@@ -1,0 +1,32 @@
+[
+  {
+    "image": "zhuang_386_crop_10.jpg",
+    "annotator": "nch",
+    "page_info": {
+      "page_num": "270",
+      "word_num": "10"
+    },
+    "simplified_Chinese_character": "峨",
+    "pronunciations": [
+      {
+        "zhuang_spelling": "ngoz",
+        "ipa": "ŋo2",
+        "imported_source_path": "",
+        "imported_image": [],
+        "entries": [
+          {
+            "part_of_speech": "量",
+            "meaning": "座（山）。",
+            "examples": [
+              {
+                "壮文": "",
+                "中文": ""
+              }
+            ]
+          }
+        ],
+        "dialect_type": 1
+      }
+    ]
+  }
+]
